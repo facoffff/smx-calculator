@@ -1,0 +1,1049 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SMX Period Calculator</title>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useMemo } = React;
+
+// ============================================================================
+// PART 1: VESSEL DATA (150 vessels with short property names)
+// ============================================================================
+const VESSELS = [
+  {n:"AFRICAN BLACKBIRD",dwt:66637,yr:2015,dr:12.925,cu:83102,tpc:66.4,sc:"Yes",fbs:13.5,fls:14,fbi:29,fli:29,fm:0.1,ebs:11.5,els:12.5,ebi:20.5,eli:20.5,em:0.1,pifo:2.8,pwfo:4.8,pim:0.1,pwm:0.1},
+  {n:"AFRICAN INSPIRATION",dwt:61448,yr:2011,dr:13,cu:77675,tpc:61.4,sc:"No",fbs:13,fls:13,fbi:23,fli:26,fm:0.1,ebs:11.5,els:11.5,ebi:18,eli:20.5,em:0.1,pifo:2.8,pwfo:4.7,pim:0.1,pwm:0.1},
+  {n:"AFRICAN LUNDE",dwt:61320,yr:2014,dr:13.01,cu:77674,tpc:61.4,sc:"No",fbs:13.5,fls:14.3,fbi:26.5,fli:26.5,fm:0.1,ebs:12.5,els:13,ebi:20.5,eli:21.5,em:0.1,pifo:2.2,pwfo:5.6,pim:0.1,pwm:0.1},
+  {n:"AKIJ PEARL",dwt:56045,yr:2005,dr:12.75,cu:70809,tpc:55.8,sc:"No",fbs:13.5,fls:12.5,fbi:27.5,fli:27.5,fm:0.1,ebs:13,els:12,ebi:23,eli:23,em:0.1,pifo:3,pwfo:4.2,pim:0.1,pwm:0.1},
+  {n:"ASC GLORY",dwt:58018,yr:2009,dr:12.95,cu:71449,tpc:59.24,sc:"No",fbs:12.8,fls:12,fbi:22,fli:23,fm:0.1,ebs:12,els:11.2,ebi:20,eli:21,em:0.1,pifo:3,pwfo:4,pim:0.2,pwm:0.2},
+  {n:"ALICIA",dwt:63351,yr:2012,dr:13.3,cu:77675,tpc:62.2,sc:"No",fbs:13,fls:13,fbi:23,fli:25,fm:0.1,ebs:12,els:12,ebi:19,eli:20,em:0.1,pifo:2.95,pwfo:4.95,pim:0.1,pwm:0.1},
+  {n:"PUNTA",dwt:51890,yr:2013,dr:12.35,cu:64983,tpc:56.7,sc:"No",fbs:14,fls:13.5,fbi:28,fli:28,fm:0.1,ebs:11.5,els:11,ebi:23,eli:23,em:0.1,pifo:2.3,pwfo:3.6,pim:0.1,pwm:0.1},
+  {n:"BERGE TATEYAMA",dwt:63511,yr:2020,dr:13.418,cu:80497,tpc:61.4,sc:"Yes",fbs:14.2,fls:13.4,fbi:27.8,fli:27.8,fm:0.1,ebs:12.2,els:11.3,ebi:16.9,eli:16.9,em:0.1,pifo:3,pwfo:6.1,pim:0.1,pwm:0.1},
+  {n:"TAI SENTRY",dwt:64589,yr:2024,dr:13.5,cu:81000,tpc:59,sc:"No",fbs:14.6,fls:13.7,fbi:26.7,fli:26.7,fm:0.1,ebs:12.8,els:11.6,ebi:17.2,eli:17.3,em:0.1,pifo:3.6,pwfo:5,pim:0.1,pwm:0.1},
+  {n:"SPAR URSA",dwt:58018,yr:2011,dr:12.95,cu:71500,tpc:59.25,sc:"No",fbs:12.5,fls:12,fbi:22.5,fli:22.5,fm:0.1,ebs:12.5,els:12,ebi:22.5,eli:22.5,em:0.1,pifo:2.5,pwfo:4.5,pim:0.1,pwm:0.1},
+  {n:"JI HONG",dwt:52571,yr:2004,dr:12.022,cu:67756.3,tpc:55.5,sc:"No",fbs:12,fls:11,fbi:22,fli:22,fm:0.1,ebs:12,els:11,ebi:22,eli:22,em:0.1,pifo:3,pwfo:6,pim:0.1,pwm:0.1},
+  {n:"SINGAPORE BULKER",dwt:56718.7,yr:2012,dr:12.8,cu:71634.12,tpc:58.8,sc:"No",fbs:0,fls:0,fbi:0,fli:0,fm:0,ebs:12.5,els:11.8,ebi:26,eli:26,em:0.1,pifo:3.5,pwfo:4.5,pim:0.1,pwm:0.1},
+  {n:"VAN HUI",dwt:63876,yr:2023,dr:13.5,cu:78300,tpc:60.4,sc:"No",fbs:14,fls:13.5,fbi:22,fli:24,fm:0.1,ebs:12.5,els:12.5,ebi:17,eli:20,em:0.1,pifo:3,pwfo:5,pim:0.1,pwm:0.1},
+  {n:"PEPPINO",dwt:58015,yr:2010,dr:12.95,cu:71549,tpc:59.24,sc:"No",fbs:0,fls:0,fbi:0,fli:0,fm:0,ebs:12.5,els:12,ebi:25,eli:26,em:0.1,pifo:3.5,pwfo:5.5,pim:0.1,pwm:0.1},
+  {n:"THOR COURAGE",dwt:58693,yr:2009,dr:12.828,cu:72360,tpc:57.54,sc:"No",fbs:12,fls:11.5,fbi:19,fli:19,fm:0.1,ebs:12,els:11.5,ebi:19,eli:19,em:0.1,pifo:2.5,pwfo:5.5,pim:0.1,pwm:0.1},
+  {n:"BELYAMATO",dwt:63696,yr:2022,dr:13.526,cu:81198,tpc:61.4,sc:"No",fbs:14,fls:13.5,fbi:25,fli:25,fm:0.1,ebs:12,els:12,ebi:17,eli:18.5,em:0.1,pifo:2.5,pwfo:5,pim:0.1,pwm:0.1},
+  {n:"YASA PLUTO",dwt:64009,yr:2025,dr:13.5,cu:78665,tpc:61.1,sc:"No",fbs:13.5,fls:13,fbi:20.5,fli:21.5,fm:0.1,ebs:12.5,els:12,ebi:16,eli:17,em:0.1,pifo:4,pwfo:2,pim:0.1,pwm:0.1},
+  {n:"AMBER ETERNITY",dwt:63600,yr:2024,dr:13.5,cu:78325.7,tpc:61.7,sc:"Yes",fbs:14,fls:13,fbi:26,fli:26,fm:0.1,ebs:12.7,els:11.5,ebi:17.8,eli:17.8,em:0.1,pifo:3,pwfo:6,pim:0.1,pwm:0.1},
+  {n:"JOSCO CHANGZHOU",dwt:58764,yr:2011,dr:12.676,cu:73679.4,tpc:59.5,sc:"No",fbs:13.3,fls:12.8,fbi:29.5,fli:29.5,fm:0.1,ebs:12.5,els:12,ebi:25.3,eli:25.5,em:0.1,pifo:3,pwfo:4.5,pim:0.1,pwm:0.1},
+  {n:"JOSCO YONGZHOU",dwt:61348,yr:2020,dr:13.026,cu:77539.3,tpc:60.4,sc:"No",fbs:14.5,fls:13.7,fbi:29.5,fli:29.5,fm:0.1,ebs:12.5,els:12,ebi:20.5,eli:20.5,em:0.1,pifo:3,pwfo:5,pim:0.1,pwm:0.1},
+  {n:"LILIAN TRADER",dwt:63500,yr:2025,dr:13.5,cu:78324,tpc:59.2,sc:"No",fbs:14,fls:13.5,fbi:26,fli:28.5,fm:0.1,ebs:12.5,els:12,ebi:19,eli:21,em:0.1,pifo:4,pwfo:6.5,pim:0.1,pwm:0.1},
+  {n:"SORAL",dwt:63771,yr:2024,dr:13.5,cu:81198,tpc:61.5,sc:"No",fbs:13,fls:13,fbi:18,fli:23,fm:0.1,ebs:12.3,els:12,ebi:16,eli:21,em:0.1,pifo:3,pwfo:5,pim:0.1,pwm:0.1},
+  {n:"JOSCO JIANGZHOU",dwt:63850,yr:2026,dr:13.3,cu:78326,tpc:62.3,sc:"No",fbs:13.2,fls:12.8,fbi:20,fli:20,fm:0.1,ebs:11.5,els:11,ebi:15,eli:15,em:0.1,pifo:2.5,pwfo:5.5,pim:0.1,pwm:0.1},
+  {n:"ZHONG CHANG 258",dwt:56330.4,yr:2011,dr:12.8,cu:71634.13,tpc:58.8,sc:"No",fbs:0,fls:0,fbi:0,fli:0,fm:0,ebs:12,els:11.5,ebi:23,eli:23.5,em:0.1,pifo:2.8,pwfo:5,pim:0.1,pwm:0.1},
+  {n:"CL ANZI HE",dwt:63077,yr:2020,dr:13.3,cu:77322,tpc:62.1,sc:"No",fbs:14,fls:13.75,fbi:26,fli:30,fm:0.1,ebs:13.5,els:13.5,ebi:20.4,eli:23.4,em:0.1,pifo:2.6,pwfo:5,pim:0.1,pwm:0.1},
+  {n:"THOR CHAICHANA",dwt:58605,yr:2013,dr:12.676,cu:73679,tpc:59.5,sc:"No",fbs:12,fls:11.5,fbi:19.5,fli:19.5,fm:0.1,ebs:12,els:11.5,ebi:19.5,eli:19.5,em:0.1,pifo:2.5,pwfo:5,pim:0.1,pwm:0.1},
+  {n:"TAHO FANTASY",dwt:63500,yr:2025,dr:13.5,cu:78000,tpc:61.7,sc:"No",fbs:14,fls:13.5,fbi:23,fli:24.7,fm:0.1,ebs:12.7,els:11.7,ebi:17,eli:17,em:0.1,pifo:3.6,pwfo:6.2,pim:0.1,pwm:0.1},
+  {n:"AQUARIUS",dwt:56048,yr:2013,dr:12.715,cu:71345.85,tpc:56.1,sc:"No",fbs:13.5,fls:13,fbi:25,fli:29,fm:0.1,ebs:13,els:12.5,ebi:25.5,eli:25.5,em:0.1,pifo:2,pwfo:4,pim:0.1,pwm:0.1},
+  {n:"DENNISAN",dwt:66000,yr:2026,dr:13.8,cu:81500,tpc:61.61,sc:"No",fbs:14,fls:13.5,fbi:24,fli:26,fm:0.1,ebs:12.5,els:12,ebi:17,eli:19,em:0.1,pifo:3,pwfo:5,pim:0.1,pwm:0.1},
+  {n:"GOOD CARRY",dwt:63379,yr:2016,dr:13.4,cu:80498,tpc:61.4,sc:"No",fbs:0,fls:0,fbi:0,fli:0,fm:0,ebs:13,els:12,ebi:18,eli:19,em:0.1,pifo:3,pwfo:5.5,pim:0.1,pwm:0.1},
+  {n:"YOUNG SPIRIT",dwt:63579,yr:2015,dr:13.3,cu:76949,tpc:62.99,sc:"No",fbs:0,fls:0,fbi:0,fli:0,fm:0,ebs:13,els:12,ebi:18.5,eli:19.5,em:0.1,pifo:3.5,pwfo:4.5,pim:0.1,pwm:0.1},
+  {n:"SLAVIA ",dwt:64000,yr:2026,dr:13.5,cu:78324,tpc:61.7,sc:"No",fbs:13.4,fls:13.4,fbi:20.4,fli:23.4,fm:0.1,ebs:12.3,els:12.3,ebi:16.5,eli:17.8,em:0.1,pifo:3,pwfo:5,pim:0.1,pwm:0.1},
+  {n:"GRECO LIBERO",dwt:63320,yr:2015,dr:13.3,cu:78746,tpc:62.3,sc:"No",fbs:13.5,fls:13.5,fbi:26.5,fli:27.5,fm:0.1,ebs:12.5,els:12.5,ebi:22.5,eli:23.5,em:0.1,pifo:3,pwfo:5.5,pim:0.1,pwm:0.1},
+  {n:"WW HANNA",dwt:61527,yr:2011,dr:13.01,cu:77674.69,tpc:61.4,sc:"No",fbs:12,fls:11.5,fbi:19,fli:20,fm:0.1,ebs:12,els:11.5,ebi:19,eli:20,em:0.1,pifo:2.3,pwfo:4.5,pim:0.1,pwm:0.1},
+  {n:"ARIES HONOR",dwt:63775.6,yr:2025,dr:13.5,cu:78000,tpc:62.3,sc:"No",fbs:13.5,fls:13,fbi:22.5,fli:22.5,fm:0.1,ebs:12,els:12,ebi:15,eli:16,em:0.1,pifo:2.2,pwfo:4.2,pim:0.1,pwm:0.1},
+  {n:"ALBERTA",dwt:62958,yr:2016,dr:13.3,cu:77490.8,tpc:62.13,sc:"No",fbs:14.5,fls:14,fbi:31.5,fli:31.5,fm:0.1,ebs:12,els:12,ebi:21.5,eli:22.5,em:0.1,pifo:2.95,pwfo:4.95,pim:0.1,pwm:0.1},
+  {n:"LIBERTY EXPLORER",dwt:61388,yr:2011,dr:13.01,cu:77674.69,tpc:61.4,sc:"No",fbs:13.5,fls:13,fbi:24.6,fli:25.6,fm:0.1,ebs:12.5,els:12.5,ebi:22.1,eli:23.1,em:0.1,pifo:3.5,pwfo:6.1,pim:0.1,pwm:0.1},
+  {n:"EMMANUEL",dwt:63300,yr:0,dr:13.3,cu:77400,tpc:62.3,sc:"No",fbs:0,fls:0,fbi:0,fli:0,fm:0,ebs:12.5,els:12,ebi:19,eli:22,em:0.1,pifo:3.25,pwfo:4.75,pim:0.1,pwm:0.1},
+  {n:"FUTURE",dwt:56128,yr:2012,dr:12.715,cu:71345,tpc:56.1,sc:"No",fbs:13,fls:13,fbi:24,fli:26,fm:0.1,ebs:12,els:12,ebi:22,eli:24,em:0.1,pifo:2,pwfo:5,pim:0.1,pwm:0.1},
+  {n:"BBG CONFIDENCE",dwt:63300,yr:2018,dr:13.3,cu:78702,tpc:62,sc:"No",fbs:14.5,fls:13.3,fbi:29,fli:29,fm:0.1,ebs:13,els:12.5,ebi:21.5,eli:22.5,em:0.1,pifo:3.8,pwfo:6.5,pim:0.1,pwm:0.1},
+  {n:"OSLO VENTURE",dwt:63234,yr:2015,dr:13.3,cu:77786.4,tpc:62.2,sc:"No",fbs:14,fls:13.5,fbi:25.9,fli:27.9,fm:0.1,ebs:12.75,els:11.75,ebi:19.3,eli:19.3,em:0.1,pifo:2.4,pwfo:4,pim:0.1,pwm:0.1},
+  {n:"TAI HONOR",dwt:52220,yr:2005,dr:12.024,cu:67756,tpc:55.5,sc:"No",fbs:0,fls:0,fbi:0,fli:0,fm:0,ebs:13,els:12,ebi:19,eli:19.75,em:0.1,pifo:2.5,pwfo:4.5,pim:0.1,pwm:0.1},
+  {n:"MXD QUANZHOU",dwt:52015,yr:2002,dr:12.27,cu:64930,tpc:56.57,sc:"No",fbs:12.5,fls:12.5,fbi:22,fli:23.5,fm:0.1,ebs:12.5,els:12,ebi:22,eli:22,em:0.1,pifo:3,pwfo:4.5,pim:0.1,pwm:0.1},
+  {n:"CLIPPER BAROLO",dwt:58443.5,yr:2011,dr:13.02,cu:75530.5,tpc:62,sc:"No",fbs:13,fls:12,fbi:23,fli:24,fm:0.1,ebs:12.5,els:11.5,ebi:21,eli:22,em:0.1,pifo:3,pwfo:7.5,pim:0.1,pwm:0.1},
+  {n:"HORSEI VENTURE",dwt:51000,yr:2011,dr:12.33,cu:59600,tpc:54.8,sc:"No",fbs:0,fls:0,fbi:0,fli:0,fm:0,ebs:11.4,els:13.5,ebi:18.5,eli:18.5,em:0.1,pifo:2,pwfo:4,pim:0.1,pwm:0.1},
+  {n:"BH XIBAIPO",dwt:63609.3,yr:2021,dr:13.5,cu:78324,tpc:61.7,sc:"Yes",fbs:0,fls:0,fbi:0,fli:0,fm:0,ebs:12.8,els:11.5,ebi:20,eli:20,em:0.1,pifo:3,pwfo:6,pim:0.1,pwm:0.1},
+  {n:"YANGTZE IMPRESSION",dwt:64000,yr:2016,dr:13.3,cu:77784,tpc:62.2,sc:"No",fbs:0,fls:0,fbi:0,fli:0,fm:0,ebs:12.5,els:12,ebi:19.5,eli:21.5,em:0.1,pifo:3,pwfo:5,pim:0.1,pwm:0.1},
+  {n:"JIN HENG",dwt:63000,yr:2014,dr:13.3,cu:77782,tpc:62.3,sc:"No",fbs:0,fls:0,fbi:0,fli:0,fm:0,ebs:13,els:12,ebi:23.5,eli:23.5,em:0.1,pifo:3.2,pwfo:7,pim:0.1,pwm:0.1},
+  {n:"PACIFIC TALISMAN",dwt:61418,yr:2016,dr:13.026,cu:77546.5,tpc:60.4,sc:"No",fbs:14.5,fls:14,fbi:30.5,fli:30.5,fm:0.1,ebs:12.5,els:12,ebi:21.8,eli:22.8,em:0.1,pifo:3.5,pwfo:5,pim:0.1,pwm:0.1},
+  {n:"DEVBULK KAYA",dwt:40527,yr:2012,dr:10.451,cu:47247,tpc:51.3,sc:"No",fbs:0,fls:0,fbi:0,fli:0,fm:0,ebs:12.5,els:12,ebi:17.5,eli:17.5,em:0.1,pifo:2.85,pwfo:5.6,pim:0.1,pwm:0.1},
+  {n:"JABAL ALKAWR",dwt:63581.8,yr:2014,dr:13.3,cu:78771.1,tpc:62.3,sc:"No",fbs:13.5,fls:13,fbi:26,fli:28,fm:0.1,ebs:12,els:12,ebi:20,eli:23.3,em:0.1,pifo:3.3,pwfo:4.8,pim:0.1,pwm:0.1},
+  {n:"ALKYONI SB",dwt:55757,yr:2014,dr:12.7,cu:71600,tpc:56.9,sc:"No",fbs:13,fls:12.5,fbi:22.5,fli:22.5,fm:0.1,ebs:12.5,els:12,ebi:21,eli:21,em:0.1,pifo:2.5,pwfo:4.5,pim:0.1,pwm:0.1},
+  {n:"AMOY SAILING TBN",dwt:63500,yr:2026,dr:13.5,cu:78325,tpc:61.7,sc:"No",fbs:14,fls:13.5,fbi:23,fli:24.5,fm:0.1,ebs:13,els:12.5,ebi:18,eli:19,em:0.1,pifo:2.8,pwfo:4.6,pim:0.1,pwm:0.1},
+  {n:"ANAHITA",dwt:61238,yr:2019,dr:13.02,cu:77539,tpc:60.4,sc:"No",fbs:14,fls:14,fbi:26,fli:29,fm:0.1,ebs:12,els:12,ebi:19,eli:20,em:0.1,pifo:2.5,pwfo:5,pim:0.1,pwm:0.1},
+  {n:"AQUADONNA",dwt:63526,yr:2024,dr:13.526,cu:81198,tpc:61.5,sc:"No",fbs:0,fls:0,fbi:0,fli:0,fm:0,ebs:14.3,els:13.5,ebi:28.4,eli:28.4,em:0.2,pifo:2.7,pwfo:4.8,pim:0.1,pwm:0.1},
+  {n:"BERLINDA",dwt:63242.1,yr:2015,dr:13.294,cu:78750.75,tpc:62.3,sc:"No",fbs:13.5,fls:13.5,fbi:25.5,fli:28.5,fm:0.1,ebs:12.5,els:12.5,ebi:23,eli:25,em:0.1,pifo:3.2,pwfo:5,pim:0.1,pwm:0.1},
+  {n:"AUGUST",dwt:61090,yr:2015,dr:13,cu:77232,tpc:60.27,sc:"Yes",fbs:13.5,fls:12.5,fbi:21.5,fli:21.5,fm:0.1,ebs:12.5,els:11.5,ebi:18,eli:18,em:0.1,pifo:1.7,pwfo:4,pim:0.1,pwm:0.1},
+  {n:"BAHRI MUNIRA",dwt:64499,yr:2020,dr:13.54,cu:81233,tpc:61.3,sc:"Yes",fbs:14,fls:13,fbi:22.5,fli:22.5,fm:0.1,ebs:13,els:12,ebi:18.5,eli:18.5,em:0.1,pifo:2.8,pwfo:5,pim:0.1,pwm:0.1},
+  {n:"BAYRAKTAR UNITY",dwt:58608,yr:2010,dr:13.02,cu:75530,tpc:58.98,sc:"No",fbs:0,fls:0,fbi:0,fli:0,fm:0,ebs:12,els:12,ebi:27.5,eli:27.5,em:0.2,pifo:2.5,pwfo:5,pim:0.2,pwm:0.2},
+  {n:"BBG LEADER",dwt:63241,yr:2015,dr:13.3,cu:77786.4,tpc:62.2,sc:"No",fbs:14,fls:13.5,fbi:25,fli:29,fm:0.1,ebs:12,els:11.5,ebi:17,eli:21,em:0.1,pifo:3.25,pwfo:3.75,pim:0.1,pwm:0.1},
+  {n:"BBG NOVA",dwt:63313.9,yr:2016,dr:13.3,cu:77944.19,tpc:62.2,sc:"No",fbs:14,fls:13.5,fbi:25,fli:29,fm:0.1,ebs:11.5,els:11,ebi:16.5,eli:21.5,em:0.1,pifo:3.2,pwfo:3.8,pim:0.1,pwm:0.1},
+  {n:"BELFORCE",dwt:61224,yr:2021,dr:13.025,cu:77539,tpc:60.4,sc:"No",fbs:14.5,fls:14,fbi:28,fli:28,fm:0.1,ebs:13.5,els:13,ebi:24.5,eli:24.5,em:0.1,pifo:2.8,pwfo:5,pim:0.1,pwm:0.1},
+  {n:"BH SHIJIAZHUANG NB",dwt:64675,yr:2026,dr:13.3,cu:78700,tpc:62.3,sc:"No",fbs:12,fls:13,fbi:19.1,fli:19.1,fm:0.1,ebs:12,els:13,ebi:19.1,eli:19.1,em:0.1,pifo:0,pwfo:0,pim:0,pwm:0},
+  {n:"BLOOM HALO",dwt:66039,yr:2024,dr:0,cu:82900,tpc:66.3,sc:"Yes",fbs:14.2,fls:13.5,fbi:29.5,fli:29.5,fm:0.1,ebs:12,els:12,ebi:18.3,eli:21.1,em:0.1,pifo:2.5,pwfo:4.9,pim:0.1,pwm:0.1},
+  {n:"AE URANUS",dwt:53383,yr:2008,dr:12.54,cu:65752,tpc:57,sc:"No",fbs:0,fls:0,fbi:0,fli:0,fm:0,ebs:12.5,els:12,ebi:22,eli:23,em:0.1,pifo:3.5,pwfo:5,pim:0.1,pwm:0.1},
+  {n:"BORDEAUX",dwt:55659,yr:2011,dr:12.87,cu:70733,tpc:57.1,sc:"No",fbs:0,fls:0,fbi:0,fli:0,fm:0,ebs:12.5,els:12.5,ebi:22,eli:24.5,em:0.1,pifo:2.2,pwfo:5,pim:0.1,pwm:0.1},
+  {n:"BSI",dwt:63500,yr:2020,dr:13.418,cu:80500,tpc:61.4,sc:"No",fbs:14,fls:14,fbi:25,fli:29,fm:0.1,ebs:13,els:13,ebi:21,eli:24,em:0.1,pifo:4,pwfo:4,pim:0.1,pwm:0.1},
+  {n:"BULK MANARA",dwt:55692,yr:2010,dr:12.57,cu:70855.3,tpc:55.8,sc:"No",fbs:0,fls:0,fbi:0,fli:0,fm:0,ebs:14,els:13.5,ebi:28,eli:30,em:0.1,pifo:2.5,pwfo:4.5,pim:0.1,pwm:0.1},
+  {n:"CLIPPER I-STAR",dwt:61403,yr:2013,dr:13.01,cu:77675,tpc:61.4,sc:"No",fbs:14,fls:13.25,fbi:25,fli:27,fm:0.1,ebs:12.5,els:11.5,ebi:17,eli:17.5,em:0.1,pifo:2.5,pwfo:5.3,pim:0.1,pwm:0.1},
+  {n:"KARPATHOS DAWN",dwt:56700.3,yr:2010,dr:12.8,cu:71634.09,tpc:58.8,sc:"No",fbs:12.5,fls:12,fbi:26,fli:26,fm:0.1,ebs:11.5,els:11,ebi:22,eli:22,em:0.1,pifo:3,pwfo:5,pim:0.1,pwm:0.1},
+  {n:"PRINCESS MARIA",dwt:55414,yr:2009,dr:12.87,cu:72406,tpc:57.1,sc:"No",fbs:0,fls:0,fbi:0,fli:0,fm:0,ebs:12,els:11.5,ebi:23.5,eli:24,em:0.1,pifo:3,pwfo:5,pim:0.1,pwm:0.1},
+  {n:"COMMON GALAXY",dwt:63173,yr:2015,dr:13.3,cu:77785,tpc:62.2,sc:"No",fbs:14,fls:13.75,fbi:22.2,fli:27.7,fm:0.1,ebs:13,els:13,ebi:17,eli:21.4,em:0.1,pifo:4.2,pwfo:5.8,pim:0.1,pwm:0.1},
+  {n:"AFRICAN BLACKBIRD II",dwt:66637,yr:2015,dr:12.925,cu:83102,tpc:66.4,sc:"Yes",fbs:13.5,fls:14,fbi:29,fli:29,fm:0.1,ebs:11.5,els:12.5,ebi:20.5,eli:20.5,em:0.1,pifo:2.8,pwfo:4.8,pim:0.1,pwm:0.1},
+  {n:"CORE IMPERIAL",dwt:63000,yr:2019,dr:13.4,cu:80467,tpc:61.4,sc:"Yes",fbs:14.3,fls:13.5,fbi:28.7,fli:28.7,fm:0.1,ebs:13,els:13,ebi:19,eli:23,em:0.1,pifo:2.9,pwfo:5,pim:0.1,pwm:0.1},
+  {n:"CUMBRIA",dwt:61268,yr:2015,dr:13.01,cu:77674.69,tpc:61.4,sc:"No",fbs:13,fls:13,fbi:20.5,fli:24,fm:0.1,ebs:11,els:11,ebi:16.5,eli:17.5,em:0.1,pifo:2.5,pwfo:5,pim:0.1,pwm:0.1},
+  {n:"MARIMAN",dwt:63258,yr:2012,dr:13.324,cu:77491.9,tpc:62.13,sc:"No",fbs:0,fls:0,fbi:0,fli:0,fm:0,ebs:11.5,els:11.5,ebi:21,eli:24,em:0.1,pifo:3.5,pwfo:6,pim:0.1,pwm:0.1},
+  {n:"DESERT PIONEER",dwt:60000,yr:2022,dr:13.217,cu:76406,tpc:61.36,sc:"No",fbs:14,fls:14,fbi:22.7,fli:26.2,fm:0.1,ebs:13,els:13,ebi:18,eli:22,em:0.1,pifo:3.2,pwfo:5.2,pim:0.1,pwm:0.1},
+  {n:"DISKO ISLAND",dwt:58032,yr:2012,dr:12.826,cu:72689.7,tpc:57.47,sc:"No",fbs:0,fls:0,fbi:0,fli:0,fm:0,ebs:14.1,els:13.6,ebi:25.9,eli:25.9,em:0.1,pifo:2.6,pwfo:5.3,pim:0.1,pwm:0.1},
+  {n:"CHANG HANG JIN HAI",dwt:58000,yr:2012,dr:12.8,cu:72777.5,tpc:60.7,sc:"No",fbs:0,fls:0,fbi:0,fli:0,fm:0,ebs:12.7,els:12,ebi:24,eli:24,em:0.1,pifo:3.3,pwfo:5,pim:0.1,pwm:0.1},
+  {n:"TAHO FANTASY II",dwt:63500,yr:2025,dr:13.5,cu:78000,tpc:61.7,sc:"No",fbs:13.5,fls:14.5,fbi:23,fli:24.7,fm:0.1,ebs:11.7,els:12.7,ebi:17,eli:17,em:0.1,pifo:3.6,pwfo:6.2,pim:0.1,pwm:0.1},
+  {n:"YASA VENUS",dwt:61076,yr:2019,dr:13.025,cu:77528,tpc:60.4,sc:"No",fbs:12.5,fls:12.5,fbi:18,fli:20.3,fm:0.1,ebs:12,els:12,ebi:15,eli:18,em:0.1,pifo:2.5,pwfo:4.5,pim:0.1,pwm:0.1},
+  {n:"NBS HONOR",dwt:53605,yr:2005,dr:12.49,cu:65752,tpc:56.386,sc:"No",fbs:0,fls:0,fbi:0,fli:0,fm:0,ebs:11.5,els:11,ebi:21.5,eli:21.5,em:0.1,pifo:3.5,pwfo:6,pim:0.1,pwm:0.1},
+  {n:"SEACON TBN",dwt:63775.5,yr:2027,dr:13.5,cu:78324.2,tpc:61.4,sc:"No",fbs:14,fls:13,fbi:22.5,fli:22.5,fm:0.1,ebs:12.5,els:11.9,ebi:16.1,eli:18,em:0.1,pifo:4,pwfo:5.5,pim:0.1,pwm:0.1},
+  {n:"TANGSHAN",dwt:64675,yr:2026,dr:13.5,cu:78870,tpc:60.2,sc:"No",fbs:14,fls:13.3,fbi:26.2,fli:26.2,fm:0.1,ebs:13,els:12,ebi:19.1,eli:19.1,em:0.1,pifo:3.4,pwfo:5.6,pim:0.1,pwm:0.1},
+  {n:"EASTERN CAMELLIA",dwt:56818,yr:2012,dr:12.8,cu:71634,tpc:58.8,sc:"No",fbs:0,fls:0,fbi:0,fli:0,fm:0,ebs:12,els:11,ebi:24,eli:24.5,em:0.1,pifo:3.5,pwfo:5.5,pim:0.1,pwm:0.1},
+  {n:"EFE BOSPHORUS",dwt:63541,yr:2016,dr:13.3,cu:78750,tpc:62.3,sc:"No",fbs:14.5,fls:13.5,fbi:27.5,fli:29.5,fm:0.1,ebs:12.6,els:11.7,ebi:22.3,eli:22.3,em:0.1,pifo:2,pwfo:4,pim:0.1,pwm:0.1},
+  {n:"FJ VIOLA",dwt:61174,yr:2020,dr:13,cu:77539,tpc:60.4,sc:"No",fbs:0,fls:0,fbi:0,fli:0,fm:0,ebs:14.5,els:13.5,ebi:28.8,eli:31,em:0.1,pifo:3,pwfo:5,pim:0.1,pwm:0.1},
+  {n:"G TAISHAN",dwt:58780,yr:2008,dr:12.8,cu:72360.3,tpc:57.5,sc:"No",fbs:12.5,fls:12,fbi:22.8,fli:23.9,fm:0.1,ebs:11.5,els:11,ebi:19.6,eli:19.9,em:0.1,pifo:3.5,pwfo:6,pim:0,pwm:0},
+  {n:"GENCO HORNET",dwt:63550,yr:2014,dr:13.3,cu:78701,tpc:62.3,sc:"No",fbs:0,fls:0,fbi:0,fli:0,fm:0,ebs:12.5,els:12,ebi:19,eli:19,em:0.1,pifo:2.5,pwfo:5,pim:0.1,pwm:0.1},
+  {n:"GENCO MARY",dwt:61085,yr:2022,dr:13.025,cu:77600,tpc:60.4,sc:"No",fbs:0,fls:0,fbi:0,fli:0,fm:0,ebs:12.5,els:12,ebi:18.5,eli:18.5,em:0.1,pifo:3,pwfo:5,pim:0.1,pwm:0.1},
+  {n:"GENCO MAYFLOWER",dwt:63304,yr:2017,dr:13.3,cu:77700,tpc:62.2,sc:"No",fbs:0,fls:0,fbi:0,fli:0,fm:0,ebs:11.5,els:11,ebi:17,eli:20,em:0.1,pifo:3.25,pwfo:3.75,pim:0.1,pwm:0.1},
+  {n:"GENCO PREDATOR",dwt:55407,yr:2005,dr:12.522,cu:69400,tpc:56.4,sc:"No",fbs:0,fls:0,fbi:0,fli:0,fm:0,ebs:13,els:12,ebi:22.6,eli:22.6,em:0.1,pifo:2.5,pwfo:4.5,pim:0.1,pwm:0.1},
+  {n:"GENCO VIGILANT",dwt:63497,yr:2015,dr:13.3,cu:78787,tpc:62.3,sc:"No",fbs:0,fls:0,fbi:0,fli:0,fm:0,ebs:13,els:12,ebi:23,eli:23.5,em:0.1,pifo:3.3,pwfo:4.8,pim:0.1,pwm:0.1},
+  {n:"GEOSTAR",dwt:61508,yr:2011,dr:13.01,cu:77674,tpc:61.4,sc:"No",fbs:13.8,fls:13.3,fbi:31,fli:31,fm:0.1,ebs:12.5,els:11.5,ebi:22,eli:22.5,em:0.1,pifo:2.5,pwfo:5.5,pim:0.1,pwm:0.1},
+  {n:"LADY",dwt:63440,yr:2015,dr:13.3,cu:77784,tpc:62.2,sc:"No",fbs:14,fls:13.5,fbi:28.5,fli:28.5,fm:0.1,ebs:13.4,els:12.9,ebi:25.7,eli:25.7,em:0.1,pifo:2.5,pwfo:6.5,pim:0.1,pwm:0.1},
+  {n:"GLORY TOM",dwt:63000,yr:2015,dr:13.3,cu:78771,tpc:62.3,sc:"No",fbs:14,fls:13.5,fbi:27,fli:28.5,fm:0.1,ebs:12,els:11,ebi:19.5,eli:21,em:0.1,pifo:2,pwfo:6,pim:0.2,pwm:0.2},
+  {n:"GW BRAVO",dwt:50714,yr:2011,dr:12.151,cu:55916,tpc:53.86,sc:"No",fbs:13.5,fls:12.5,fbi:22.5,fli:22.3,fm:0.1,ebs:12.5,els:11.5,ebi:15.8,eli:18.7,em:0.1,pifo:2.1,pwfo:3,pim:0.1,pwm:0.1},
+  {n:"HAI JIN",dwt:58000,yr:2013,dr:12.95,cu:71500,tpc:59.24,sc:"No",fbs:14,fls:13.1,fbi:30.6,fli:30.6,fm:0.2,ebs:11.5,els:11,ebi:23,eli:23,em:0.2,pifo:3.5,pwfo:5,pim:0.2,pwm:0.2},
+  {n:"HPC ATLANTIC",dwt:56000,yr:2013,dr:12.715,cu:71345,tpc:56.2,sc:"No",fbs:13.5,fls:13,fbi:25,fli:26,fm:0.1,ebs:12,els:11.5,ebi:22,eli:22.5,em:0.1,pifo:3,pwfo:5.5,pim:0.1,pwm:0.1},
+  {n:"JERA",dwt:57111,yr:2012,dr:13,cu:71970.1,tpc:57.3,sc:"No",fbs:13.5,fls:13,fbi:27.8,fli:27.8,fm:0.1,ebs:13,els:12.5,ebi:23.8,eli:23.8,em:0.1,pifo:2.5,pwfo:5.2,pim:0.1,pwm:0.1},
+  {n:"JIN MING 69",dwt:53299,yr:2005,dr:12.54,cu:65750,tpc:57.2,sc:"No",fbs:0,fls:0,fbi:0,fli:0,fm:0,ebs:12,els:11.5,ebi:20.5,eli:21.5,em:0.1,pifo:2,pwfo:4,pim:0.1,pwm:0.1},
+  {n:"JOSCO GUIZHOU",dwt:61307,yr:2020,dr:13.025,cu:77539,tpc:60.4,sc:"No",fbs:14.2,fls:13.5,fbi:29.5,fli:29.5,fm:0.1,ebs:13.5,els:12.8,ebi:24,eli:24,em:0.1,pifo:3,pwfo:5,pim:0.1,pwm:0.1},
+  {n:"JUNIPER POINT",dwt:63776,yr:2026,dr:13.5,cu:78483,tpc:61.7,sc:"No",fbs:13.4,fls:13.4,fbi:20.7,fli:23.4,fm:0.1,ebs:12.3,els:12.3,ebi:16.5,eli:17.8,em:0.1,pifo:2.3,pwfo:5.6,pim:0.1,pwm:0.1},
+  {n:"KAI HANG FA ZHAN",dwt:63415.6,yr:2018,dr:13.3,cu:78637,tpc:62.1,sc:"Yes",fbs:0,fls:0,fbi:0,fli:0,fm:0,ebs:12.5,els:12,ebi:23,eli:23,em:0.1,pifo:3.5,pwfo:6.5,pim:0.1,pwm:0.1},
+  {n:"LIBRA HONOR",dwt:56000,yr:2011,dr:12.818,cu:71632,tpc:58.8,sc:"No",fbs:0,fls:0,fbi:0,fli:0,fm:0,ebs:12.5,els:12,ebi:23.5,eli:24,em:0.1,pifo:4,pwfo:6,pim:0.1,pwm:0.1},
+  {n:"LILA FROSTBURG",dwt:56425,yr:2013,dr:12.81,cu:71634,tpc:58.8,sc:"No",fbs:12.5,fls:12,fbi:23,fli:23,fm:0.1,ebs:11.5,els:10.5,ebi:18.5,eli:18.5,em:0.1,pifo:3.6,pwfo:6.6,pim:0.1,pwm:0.1},
+  {n:"LINDSAYLOU",dwt:57981,yr:2012,dr:12.95,cu:71549,tpc:59.24,sc:"No",fbs:12.5,fls:12,fbi:25.5,fli:26,fm:0.2,ebs:11.5,els:11,ebi:20.5,eli:22,em:0.2,pifo:2.5,pwfo:4.5,pim:0.2,pwm:0.2},
+  {n:"MEDI PERTH",dwt:60000,yr:2017,dr:12.87,cu:77067,tpc:60.7,sc:"Yes",fbs:14.5,fls:14,fbi:26.4,fli:31.4,fm:0.1,ebs:12.5,els:11.5,ebi:20,eli:20,em:0.1,pifo:2.8,pwfo:4.8,pim:0.2,pwm:0.2},
+  {n:"MEDI ROMA",dwt:60501,yr:2017,dr:12.85,cu:76518,tpc:60.1,sc:"No",fbs:13,fls:13,fbi:20.5,fli:24.5,fm:0.1,ebs:12.5,els:11,ebi:17.5,eli:17.5,em:0.1,pifo:3,pwfo:5.5,pim:0.1,pwm:0.1},
+  {n:"MERCHIA",dwt:63585,yr:2015,dr:13.3,cu:78771.04,tpc:62.3,sc:"No",fbs:0,fls:0,fbi:0,fli:0,fm:0,ebs:12,els:11.5,ebi:17,eli:19,em:0.1,pifo:2.5,pwfo:5.5,pim:0.1,pwm:0.1},
+  {n:"MERCURY ISLAND",dwt:64095,yr:0,dr:13.525,cu:81431.5,tpc:61.1,sc:"No",fbs:0,fls:0,fbi:0,fli:0,fm:0,ebs:13.8,els:13,ebi:27,eli:27,em:0.1,pifo:3,pwfo:5,pim:0.1,pwm:0.1},
+  {n:"NORSE MOMENTUM",dwt:66335,yr:2025,dr:13.8,cu:81638,tpc:64,sc:"Yes",fbs:14,fls:13.5,fbi:19,fli:24.5,fm:0.1,ebs:12.5,els:11.5,ebi:14,eli:14.5,em:0.1,pifo:2.5,pwfo:4.8,pim:0.1,pwm:0.1},
+  {n:"NS NINGBO",dwt:64194,yr:2023,dr:14,cu:78661,tpc:62.2,sc:"No",fbs:14,fls:13.5,fbi:21.5,fli:22,fm:0.1,ebs:12,els:11,ebi:19.5,eli:19.5,em:0.1,pifo:0,pwfo:0,pim:0,pwm:0},
+  {n:"OCEAN ANG",dwt:63562,yr:2017,dr:13.3,cu:78703,tpc:62.4,sc:"No",fbs:14.5,fls:13.5,fbi:28.5,fli:28.5,fm:0.1,ebs:12.5,els:12,ebi:18.5,eli:20,em:0.1,pifo:3,pwfo:5.5,pim:0.1,pwm:0.1},
+  {n:"OCEAN TIANBAO",dwt:63562.4,yr:2016,dr:13.3,cu:78642,tpc:62.4,sc:"No",fbs:14.5,fls:13.5,fbi:28.5,fli:28.5,fm:0.1,ebs:12.5,els:12,ebi:18.5,eli:20,em:0.1,pifo:3,pwfo:5.5,pim:0.1,pwm:0.1},
+  {n:"ORCHARD",dwt:57000,yr:2010,dr:12.8,cu:71631,tpc:58.8,sc:"No",fbs:13.5,fls:13.5,fbi:25,fli:27,fm:0.1,ebs:12.5,els:12.5,ebi:21,eli:23,em:0.1,pifo:2,pwfo:5,pim:0.1,pwm:0.1},
+  {n:"ORIENTE GLORIA",dwt:61425,yr:2013,dr:13.01,cu:77674.69,tpc:61.4,sc:"No",fbs:0,fls:0,fbi:0,fli:0,fm:0,ebs:13,els:12.5,ebi:20,eli:22,em:0.1,pifo:2.2,pwfo:5.6,pim:0.1,pwm:0.1},
+  {n:"PACIFIC JASMINE",dwt:61000,yr:2016,dr:13.026,cu:76126,tpc:60.4,sc:"No",fbs:14.2,fls:13.8,fbi:28.5,fli:29.5,fm:0.1,ebs:12.5,els:12,ebi:21,eli:22,em:0.1,pifo:3,pwfo:5,pim:0.1,pwm:0.1},
+  {n:"PACIFIC TALENT",dwt:61408,yr:0,dr:13.026,cu:77546.5,tpc:60.4,sc:"No",fbs:0,fls:0,fbi:0,fli:0,fm:0,ebs:12.5,els:12,ebi:21.8,eli:22.8,em:0.1,pifo:3,pwfo:5,pim:0.1,pwm:0.1},
+  {n:"PACIFIC VICTORY",dwt:63500,yr:2017,dr:13.32,cu:78750,tpc:62.3,sc:"No",fbs:14.5,fls:14,fbi:28.2,fli:30.2,fm:0.1,ebs:12.8,els:12,ebi:20,eli:21.5,em:0.1,pifo:3.5,pwfo:5,pim:0.1,pwm:0.1},
+  {n:"PACIFIC WEALTH",dwt:63521,yr:2017,dr:13.3,cu:78750,tpc:62.2,sc:"No",fbs:14.5,fls:14,fbi:26,fli:28,fm:0.1,ebs:12.8,els:12,ebi:20,eli:21.5,em:0.1,pifo:3.5,pwfo:5.5,pim:0.1,pwm:0.1},
+  {n:"PELITA ALMEIRA PERTIWI",dwt:55000,yr:2005,dr:12.522,cu:69450,tpc:56.2,sc:"No",fbs:0,fls:0,fbi:0,fli:0,fm:0,ebs:11,els:11,ebi:26,eli:27,em:0.2,pifo:3.5,pwfo:5.6,pim:0.2,pwm:0.2},
+  {n:"PORT KYUSHU",dwt:62689,yr:2019,dr:13.3,cu:79727,tpc:60.43,sc:"No",fbs:14,fls:14,fbi:22.9,fli:27.7,fm:0.1,ebs:12.5,els:12,ebi:17.5,eli:18.5,em:0.1,pifo:3,pwfo:5,pim:0.1,pwm:0.1},
+  {n:"PORT ORIENT",dwt:61485,yr:2017,dr:13.026,cu:77546.2,tpc:60.4,sc:"No",fbs:14,fls:13.5,fbi:29.5,fli:29.5,fm:0.1,ebs:12.5,els:12,ebi:21,eli:21,em:0.1,pifo:3.75,pwfo:6.5,pim:0.1,pwm:0.1},
+  {n:"PORT TOKYO",dwt:63475,yr:2019,dr:13.4,cu:80467,tpc:61.4,sc:"No",fbs:0,fls:0,fbi:0,fli:0,fm:0,ebs:14.5,els:13.5,ebi:27,eli:27,em:0.1,pifo:2.9,pwfo:6,pim:0.1,pwm:0.1},
+  {n:"PRIDE OF YASNA",dwt:56019,yr:2006,dr:12.575,cu:70810.7,tpc:55.8,sc:"No",fbs:12,fls:12,fbi:26,fli:23,fm:0.1,ebs:11.5,els:12,ebi:23,eli:24,em:0.1,pifo:3,pwfo:4,pim:0.1,pwm:0.1},
+  {n:"PRINCESS ERIN",dwt:57333,yr:2011,dr:13,cu:71902.9,tpc:57.3,sc:"No",fbs:0,fls:0,fbi:0,fli:0,fm:0,ebs:12.5,els:11.5,ebi:23.5,eli:23.5,em:0.1,pifo:3.2,pwfo:5.5,pim:0.1,pwm:0.1},
+  {n:"QC ISABELLA",dwt:63425,yr:2024,dr:13.526,cu:81115,tpc:62.2,sc:"Yes",fbs:0,fls:0,fbi:0,fli:0,fm:0,ebs:13.8,els:13,ebi:23.5,eli:23.5,em:0.1,pifo:2.7,pwfo:4.8,pim:0.1,pwm:0.1},
+  {n:"SEA HUNTER",dwt:55418,yr:0,dr:12.487,cu:69872,tpc:55.73,sc:"No",fbs:0,fls:0,fbi:0,fli:0,fm:0,ebs:13,els:12,ebi:21,eli:22,em:0.1,pifo:3.5,pwfo:5.5,pim:0.1,pwm:0.1},
+  {n:"SEABIRD",dwt:63553,yr:2016,dr:13.3,cu:78764,tpc:62.3,sc:"No",fbs:0,fls:0,fbi:0,fli:0,fm:0,ebs:12,els:12,ebi:19,eli:21.5,em:0.1,pifo:3,pwfo:5,pim:0.1,pwm:0.1},
+  {n:"SIRIUS SKY",dwt:60514,yr:2017,dr:12.8,cu:77067,tpc:60.74,sc:"No",fbs:14.3,fls:13.8,fbi:26,fli:26,fm:0.1,ebs:12.5,els:11.6,ebi:18,eli:18,em:0.1,pifo:1.7,pwfo:5,pim:0.1,pwm:0.1},
+  {n:"SPAR VEGA",dwt:58018,yr:2011,dr:12.95,cu:71549,tpc:59.25,sc:"No",fbs:0,fls:0,fbi:0,fli:0,fm:0,ebs:12.5,els:12,ebi:22.5,eli:22.5,em:0.1,pifo:2.5,pwfo:4.5,pim:0.1,pwm:0.1},
+  {n:"TD HAMBURG",dwt:63463,yr:2017,dr:13.3,cu:78751,tpc:60.2,sc:"No",fbs:14,fls:13.5,fbi:26,fli:28.5,fm:0.1,ebs:12,els:12,ebi:16,eli:20.5,em:0.1,pifo:2.2,pwfo:5.5,pim:0.1,pwm:0.1},
+  {n:"ST PAUL",dwt:57982,yr:2010,dr:12.826,cu:72689,tpc:57.46,sc:"No",fbs:0,fls:0,fbi:0,fli:0,fm:0,ebs:14,els:13.5,ebi:30,eli:30,em:0.15,pifo:3,pwfo:5.5,pim:0.1,pwm:0.1},
+  {n:"STAR THETIS",dwt:66327,yr:2024,dr:13,cu:81637,tpc:62,sc:"Yes",fbs:14.1,fls:13.3,fbi:25,fli:25,fm:0.2,ebs:12,els:12,ebi:16,eli:19,em:0.2,pifo:2.8,pwfo:5.5,pim:0.2,pwm:0.2},
+  {n:"TCLC QUANZHOU",dwt:61632,yr:2017,dr:13,cu:77546.3,tpc:60.4,sc:"No",fbs:14,fls:13,fbi:29.5,fli:29.5,fm:0.1,ebs:13,els:12,ebi:24,eli:24,em:0.1,pifo:3,pwfo:5,pim:0.1,pwm:0.1},
+  {n:"THOR ACHIEVER",dwt:57015,yr:2010,dr:12.8,cu:71634,tpc:58.8,sc:"No",fbs:0,fls:0,fbi:0,fli:0,fm:0,ebs:12,els:12,ebi:20,eli:21.5,em:0.1,pifo:2.5,pwfo:4,pim:0.1,pwm:0.1},
+  {n:"THOR CONFIDENCE",dwt:58781,yr:0,dr:12.828,cu:72360.3,tpc:57.58,sc:"No",fbs:0,fls:0,fbi:0,fli:0,fm:0,ebs:12,els:11.5,ebi:18.5,eli:18.5,em:0.1,pifo:2.5,pwfo:5,pim:0.1,pwm:0.1},
+  {n:"THOR MADOC",dwt:55695,yr:2005,dr:12.5,cu:69872,tpc:56,sc:"No",fbs:0,fls:0,fbi:0,fli:0,fm:0,ebs:12,els:11.5,ebi:20.5,eli:20.5,em:0.1,pifo:3,pwfo:5,pim:0.1,pwm:0.1},
+  {n:"TOMINI SYMPHONY",dwt:63559.7,yr:2016,dr:13.3,cu:78642.4,tpc:62.38,sc:"No",fbs:14,fls:13.5,fbi:24.21,fli:26.04,fm:0.1,ebs:13,els:13,ebi:19.03,eli:23.36,em:0.1,pifo:2.2,pwfo:4.8,pim:0.1,pwm:0.1},
+  {n:"TOP FORTUNE",dwt:64000,yr:2019,dr:13.3,cu:77490,tpc:61.99,sc:"No",fbs:14.5,fls:14,fbi:26.5,fli:29.5,fm:0.1,ebs:13.5,els:13,ebi:20.5,eli:23.5,em:0.1,pifo:2.6,pwfo:5,pim:0.1,pwm:0.1},
+  {n:"TOP GENIUS",dwt:63500,yr:2026,dr:13.5,cu:78325.7,tpc:61.37,sc:"Yes",fbs:13.5,fls:14,fbi:20,fli:24.5,fm:0.1,ebs:12,els:12.5,ebi:15,eli:18,em:0.1,pifo:3,pwfo:5,pim:0.1,pwm:0.1},
+  {n:"URUGUAY",dwt:57937,yr:2011,dr:12.826,cu:72361,tpc:57.46,sc:"No",fbs:0,fls:0,fbi:0,fli:0,fm:0,ebs:12,els:12,ebi:20,eli:24,em:0.1,pifo:2.5,pwfo:5,pim:0.1,pwm:0.1},
+  {n:"VERUDA",dwt:51886,yr:0,dr:12.35,cu:64983.3,tpc:57.1,sc:"No",fbs:0,fls:0,fbi:0,fli:0,fm:0,ebs:14,els:13.5,ebi:27,eli:27,em:0.1,pifo:2.3,pwfo:3.5,pim:0.1,pwm:0.1},
+  {n:"WEALTH BEROE",dwt:63678.2,yr:2025,dr:13.5,cu:78520.9,tpc:61.3,sc:"No",fbs:14,fls:13.5,fbi:23,fli:25,fm:0.1,ebs:12.5,els:12,ebi:16,eli:18,em:0.1,pifo:2.8,pwfo:5.2,pim:0.1,pwm:0.1},
+  {n:"WECO TATI",dwt:63590,yr:2025,dr:13.325,cu:79019,tpc:61.35,sc:"No",fbs:13.5,fls:12.33,fbi:18.5,fli:19.5,fm:0.1,ebs:13,els:12,ebi:16.3,eli:17.5,em:0.1,pifo:2.5,pwfo:4,pim:0.1,pwm:0.1},
+  {n:"XINZHEN SEA",dwt:64000,yr:2024,dr:13.5,cu:78661.5,tpc:61.1,sc:"No",fbs:13.5,fls:13,fbi:23,fli:22.5,fm:0.1,ebs:12,els:11.5,ebi:16,eli:16.5,em:0.1,pifo:3,pwfo:6,pim:0.1,pwm:0.1},
+  {n:"YANGTZE DAWN",dwt:56700,yr:0,dr:12.8,cu:71634,tpc:58.8,sc:"No",fbs:0,fls:0,fbi:0,fli:0,fm:0,ebs:12.5,els:12,ebi:25,eli:25,em:0.1,pifo:3.5,pwfo:6,pim:0.1,pwm:0.1},
+  {n:"YASA MOON",dwt:63600,yr:2025,dr:13.5,cu:78661,tpc:61.2,sc:"No",fbs:13.5,fls:12.5,fbi:17.5,fli:19.5,fm:0.1,ebs:12.5,els:12,ebi:17.5,eli:19.5,em:0.1,pifo:4,pwfo:2,pim:0.1,pwm:0.1},
+  {n:"ZOLA",dwt:63800,yr:2018,dr:13.4,cu:78800,tpc:62.3,sc:"No",fbs:14.4,fls:13.8,fbi:28,fli:29.5,fm:0.1,ebs:12,els:12,ebi:18.5,eli:20.5,em:0.1,pifo:2.2,pwfo:6.2,pim:0.1,pwm:0.1},
+];
+
+// Routes
+const ROUTES = {
+  S1B_63: { b1:[337,0], b2:[0,0], l1:[7946,926], l2:[0,0], l3:[0,0], lr:9000, lf:1, dr:8000, df:1.33333, sm:1.12, ltt:12, dtt:12, et:24, ct:12, bk:12, fc:{lp:45000,dp:45000,bk:5000,cb:0,cl:220000,ms:15000}, fr:19250 },
+  S1C_63: { b1:[0,0], b2:[0,0], l1:[14121,298], l2:[0,0], l3:[0,0], lr:10000, lf:1.6, dr:8000, df:1.6, sm:1.12, ltt:12, dtt:12, et:24, ct:0, bk:12, fc:{lp:300000,dp:55000,bk:5000,cb:0,cl:0,ms:15000}, fr:18796 },
+  S2_63: { b1:[5285,0], b2:[0,0], l1:[5615,926], l2:[0,0], l3:[0,0], lr:20000, lf:1, dr:15000, df:1, sm:1.12, ltt:12, dtt:12, et:24, ct:0, bk:12, fc:{lp:45000,dp:45000,bk:5000,cb:0,cl:0,ms:15000}, fr:15725 },
+  S3_63: { b1:[0,0], b2:[0,0], l1:[10516,38], l2:[0,0], l3:[0,0], lr:20000, lf:1, dr:8000, df:1, sm:1.12, ltt:12, dtt:12, et:24, ct:0, bk:12, fc:{lp:45000,dp:45000,bk:5000,cb:0,cl:0,ms:15000}, fr:13450 },
+  S4A_63: { b1:[0,0], b2:[0,0], l1:[4245,851], l2:[0,0], l3:[0,0], lr:10000, lf:1.55555, dr:15000, df:1.55555, sm:1.12, ltt:12, dtt:12, et:24, ct:0, bk:12, fc:{lp:300000,dp:65000,bk:5000,cb:0,cl:0,ms:15000}, fr:18400 },
+  S4B_63: { b1:[0,0], b2:[0,0], l1:[3063,479], l2:[0,0], l3:[0,0], lr:20000, lf:1, dr:5000, df:1, sm:1.12, ltt:12, dtt:12, et:24, ct:0, bk:12, fc:{lp:35000,dp:80000,bk:5000,cb:0,cl:0,ms:15000}, fr:10421 },
+  S5_63: { b1:[3062,0], b2:[0,0], l1:[11495,0], l2:[0,0], l3:[0,0], lr:8000, lf:1.6, dr:8000, df:1.6, sm:1.12, ltt:12, dtt:12, et:24, ct:0, bk:12, fc:{lp:45000,dp:45000,bk:5000,cb:0,cl:0,ms:15000}, fr:20064 },
+  S8_63: { b1:[1899,0], b2:[0,0], l1:[3723,0], l2:[0,0], l3:[0,0], lr:8000, lf:1, dr:25000, df:1, sm:1.12, ltt:12, dtt:12, et:24, ct:0, bk:12, fc:{lp:60000,dp:80000,bk:5000,cb:0,cl:0,ms:15000}, fr:15836 },
+  S9_63: { b1:[2755,0], b2:[0,0], l1:[3291,1926], l2:[0,0], l3:[0,0], lr:8000, lf:1.33333, dr:8000, df:1.68, sm:1.12, ltt:12, dtt:12, et:24, ct:0, bk:12, fc:{lp:150000,dp:55000,bk:5000,cb:0,cl:0,ms:15000}, fr:16407 },
+  S10_63: { b1:[1884,0], b2:[0,0], l1:[2392,0], l2:[0,0], l3:[0,0], lr:8000, lf:1, dr:12000, df:1, sm:1.12, ltt:12, dtt:12, et:24, ct:0, bk:12, fc:{lp:60000,dp:60000,bk:5000,cb:0,cl:0,ms:15000}, fr:11906 },
+  S15_63: { b1:[4201,0], b2:[0,0], l1:[10,0], l2:[7765,260], l3:[0,0], lr:8000, lf:1, dr:15000, df:1, sm:1.12, ltt:12, dtt:12, et:24, ct:0, bk:12, fc:{lp:90000,dp:45000,bk:5000,cb:0,cl:0,ms:15000}, fr:15667 },
+};
+
+const REF = { dwt:63500, draft:13.418, tpc:61.4, grain:80500, sf:46, bs:13, ls:13, bIFO:21, lIFO:24, mdo:0.1, pWorkIFO:4, pWorkMDO:0.1, pIdleIFO:4, pIdleMDO:0.1 };
+const WEIGHTS = { S1B_63:5, S1C_63:5, S2_63:15, S3_63:15, S4A_63:7.5, S4B_63:10, S5_63:5, S8_63:10, S9_63:7.5, S10_63:10, S15_63:10 };
+const ROUTE_KEYS = Object.keys(ROUTES);
+
+function calcIntake(dwt, draft, tpc, cubic) {
+  const ci = (cubic * 35.3147) / 46;
+  const lo = ((draft - 100) * 100 * tpc) + 1500;
+  const di = dwt - lo;
+  return Math.min(ci, di);
+}
+
+function calcVoyage(route, bSpd, lSpd, bIFO, lIFO, bMDO, lMDO, pwIFO, pwMDO, piIFO, piMDO, intake) {
+  if (bSpd === 0 || lSpd === 0) return null;
+  let totalDays = 0, totalNonSeca = 0, totalSeca = 0, totalIFO = 0, totalMDO = 0;
+  if (route.b1[0] > 0) {
+    const nonSecaDays = (route.b1[0] * route.sm) / 24 / bSpd;
+    const secaDays = (route.b1[1] * route.sm) / 24 / bSpd;
+    totalDays += nonSecaDays + secaDays;
+    totalNonSeca += nonSecaDays;
+    totalSeca += secaDays;
+    totalIFO += nonSecaDays * bIFO;
+    totalMDO += nonSecaDays * bMDO;
+  }
+  if (route.b2[0] > 0) {
+    const nonSecaDays = (route.b2[0] * route.sm) / 24 / bSpd;
+    const secaDays = (route.b2[1] * route.sm) / 24 / bSpd;
+    totalDays += nonSecaDays + secaDays;
+    totalNonSeca += nonSecaDays;
+    totalSeca += secaDays;
+    totalIFO += nonSecaDays * bIFO;
+    totalMDO += nonSecaDays * bMDO;
+  }
+  const ttlDays = (route.ltt / 24) * 2;
+  totalDays += ttlDays;
+  totalIFO += (route.ltt / 24) * piIFO;
+  totalMDO += (route.ltt / 24) * piMDO;
+  const etlDays = (route.et / 24) * 2;
+  totalDays += etlDays;
+  totalIFO += (route.et / 24) * piIFO;
+  totalMDO += (route.et / 24) * piMDO;
+  const loadDays = (intake / route.lr) * route.lf;
+  totalDays += loadDays;
+  totalIFO += loadDays * pwIFO;
+  totalMDO += loadDays * pwMDO;
+  if (route.l1[0] > 0) {
+    const nonSecaDays = (route.l1[0] * route.sm) / 24 / lSpd;
+    const secaDays = (route.l1[1] * route.sm) / 24 / lSpd;
+    totalDays += nonSecaDays + secaDays;
+    totalNonSeca += nonSecaDays;
+    totalSeca += secaDays;
+    totalIFO += nonSecaDays * lIFO;
+    totalMDO += nonSecaDays * lMDO;
+  }
+  if (route.l2[0] > 0) {
+    const nonSecaDays = (route.l2[0] * route.sm) / 24 / lSpd;
+    const secaDays = (route.l2[1] * route.sm) / 24 / lSpd;
+    totalDays += nonSecaDays + secaDays;
+    totalNonSeca += nonSecaDays;
+    totalSeca += secaDays;
+    totalIFO += nonSecaDays * lIFO;
+    totalMDO += nonSecaDays * lMDO;
+  }
+  if (route.l3[0] > 0) {
+    const nonSecaDays = (route.l3[0] * route.sm) / 24 / lSpd;
+    const secaDays = (route.l3[1] * route.sm) / 24 / lSpd;
+    totalDays += nonSecaDays + secaDays;
+    totalNonSeca += nonSecaDays;
+    totalSeca += secaDays;
+    totalIFO += nonSecaDays * lIFO;
+    totalMDO += nonSecaDays * lMDO;
+  }
+  const ttdDays = (route.dtt / 24) * 2;
+  totalDays += ttdDays;
+  totalIFO += (route.dtt / 24) * piIFO;
+  totalMDO += (route.dtt / 24) * piMDO;
+  const etdDays = route.et / 24;
+  totalDays += etdDays;
+  totalIFO += etdDays * piIFO;
+  totalMDO += etdDays * piMDO;
+  const dischDays = (intake / route.dr) * route.df;
+  totalDays += dischDays * 2;
+  totalIFO += dischDays * pwIFO;
+  totalMDO += dischDays * pwMDO;
+  if (route.ct > 0) { totalDays += route.ct / 24 + 12 / route.ct; }
+  if (route.bk > 0) {
+    const bunkDays = route.bk / 24;
+    totalDays += bunkDays + 12 / route.bk;
+    totalIFO += bunkDays * piIFO;
+    totalMDO += bunkDays * piMDO;
+  }
+  return { days: totalDays, nonSeca: totalNonSeca, seca: totalSeca, ifo: totalIFO, mdo: totalMDO };
+}
+
+function totalFixed(route) {
+  return route.fc.lp + route.fc.dp + route.fc.bk + route.fc.cb + route.fc.cl + route.fc.ms;
+}
+
+function calcD65(route, freightRate, refVoyage, ifoPrice, mgoPrice, refIntake) {
+  if (!refVoyage) return 0;
+  return (freightRate * refVoyage.days + totalFixed(route) + refVoyage.ifo * ifoPrice + refVoyage.mdo * mgoPrice) / refIntake;
+}
+
+function calcTCE(d65, vesselVoyage, ifoPrice, mgoPrice, route, vesselIntake) {
+  if (!vesselVoyage) return 0;
+  return (d65 * vesselIntake - vesselVoyage.ifo * ifoPrice - vesselVoyage.mdo * mgoPrice - totalFixed(route)) / vesselVoyage.days;
+}
+
+function mround(value, factor) {
+  return Math.round(value / factor) * factor;
+}
+
+const BSI_OFFSET = 2034; // BSI 63 = BSI 58 + 2034
+const DEFAULT_BSI_CURVE = {
+  rows: ["Spot", "MTD", "YTD", null, "Mar", "Apr", "May", "Jun", "Jul", "Q3 2026", "Q4 2026", "Q1 2027", "Cal 27", "Cal 28", "Cal 29"],
+  bsi63: [15275, 14014, 12402, null, 16084, 15884, 16634, 17084, 17384, 17334, 16434, 13634, 14434, 13984, 13884]
+};
+
+const DEFAULT_BKI_CURVE = {
+  tenors: ["4/6 mos", "5/7 mos", "6/8 mos", "7/9 mos", "8/10 mos", "9/11 mos", "10/12 mos", "11/13 mos", "12/14 mos", "15/18 mos", "18/22 mos", "22/26 mos", "34/38 mos", "56/64 mos"],
+  months: ["Mar", "Apr", "May", "Jun"],
+  values: [[16850, 16850, 17150, 17100], [16950, 16950, 17050, 17000], [16850, 16850, 16950, 16900], [16800, 16800, 16900, 16500], [16750, 16800, 16550, 16200], [16500, 16450, 16250, 15950], [16200, 16200, 16000, 15800], [16000, 16000, 15900, 15700], [15900, 15900, 15750, 15600], [15600, 15550, 15500, 15350], [15400, 15350, 15300, 15150], [15150, 15150, 15100, 14950], [14750, 14750, 14700, 14650], [14600, 14600, 14550, 14500]]
+};
+
+const EMPTY_VESSEL = {n:"",dwt:63500,yr:2025,dr:13.418,cu:80500,tpc:61.4,sc:"No",fbs:0,fls:0,fbi:0,fli:0,fm:0,ebs:13,els:13,ebi:21,eli:24,em:0.1,pifo:4,pwfo:4,pim:0.1,pwm:0.1};
+
+// === LOCAL STORAGE HELPERS ===
+const LS_KEY = 'smx_calculator_state';
+function loadState() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch(e) {}
+  return null;
+}
+function saveState(data) {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(data)); } catch(e) {}
+}
+function initVessels() {
+  const saved = loadState();
+  if (!saved || !saved.customVessels) return VESSELS;
+  // Merge: start with all default vessels (potentially edited), then add custom ones
+  const editMap = saved.editedVessels || {};
+  const merged = VESSELS.map(v => editMap[v.n] ? {...v, ...editMap[v.n]} : v);
+  const customs = (saved.customVessels || []).filter(c => !VESSELS.some(v => v.n === c.n));
+  return [...merged, ...customs];
+}
+
+function SMXCalculator() {
+  const saved = loadState() || {};
+  const [vessels, setVesselsRaw] = useState(() => initVessels());
+  const [selectedVessel, setSelectedVessel] = useState(saved.selectedVessel || "SINGAPORE BULKER");
+  const [vlsfo, setVlsfo] = useState(saved.vlsfo || 990);
+  const [hsfo, setHsfo] = useState(saved.hsfo || 835);
+  const [mgo, setMgo] = useState(saved.mgo || 1765);
+  const [scrubberMode, setScrubberMode] = useState(saved.scrubberMode || "auto");
+  const [freightRates, setFreightRates] = useState(saved.freightRates || Object.fromEntries(ROUTE_KEYS.map(k => [k, ROUTES[k].fr])));
+  const [bkiValues, setBkiValues] = useState(saved.bkiValues || DEFAULT_BKI_CURVE.values);
+  const [bsiValues, setBsiValues] = useState(saved.bsiValues || DEFAULT_BSI_CURVE.bsi63);
+  const [showAddVessel, setShowAddVessel] = useState(false);
+  const [newVessel, setNewVessel] = useState({...EMPTY_VESSEL});
+  const [showVesselSpecs, setShowVesselSpecs] = useState(false);
+  const [editingVessel, setEditingVessel] = useState(null);
+
+  // Wrapper: persist vessels + save to localStorage
+  const setVessels = (updater) => {
+    setVesselsRaw(prev => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      // Determine custom vessels (not in default VESSELS) and edited default vessels
+      const defaultNames = new Set(VESSELS.map(v => v.n));
+      const customs = next.filter(v => !defaultNames.has(v.n));
+      const edited = {};
+      next.forEach(v => {
+        if (defaultNames.has(v.n)) {
+          const orig = VESSELS.find(o => o.n === v.n);
+          if (orig && JSON.stringify(orig) !== JSON.stringify(v)) edited[v.n] = v;
+        }
+      });
+      const current = loadState() || {};
+      saveState({...current, customVessels: customs, editedVessels: edited});
+      return next;
+    });
+  };
+
+  // Persist settings on change
+  const persistSetting = (key, value) => {
+    const current = loadState() || {};
+    saveState({...current, [key]: value});
+  };
+
+  const numberFormatter = new Intl.NumberFormat('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
+  const computed = useMemo(() => {
+    const vessel = vessels.find(v => v.n === selectedVessel);
+    if (!vessel) return null;
+
+    const refIntake = calcIntake(REF.dwt, REF.draft, REF.tpc, REF.grain);
+    const vesselIntake = calcIntake(vessel.dwt, vessel.dr, vessel.tpc || REF.tpc, vessel.cu);
+
+    const routeData = {};
+    ROUTE_KEYS.forEach(routeKey => {
+      const route = ROUTES[routeKey];
+      const refVoyage = calcVoyage(route, REF.bs, REF.ls, REF.bIFO, REF.lIFO, REF.mdo, REF.mdo, REF.pWorkIFO, REF.pWorkMDO, REF.pIdleIFO, REF.pIdleMDO, refIntake);
+      const ecoVoyage = calcVoyage(route, vessel.ebs, vessel.els, vessel.ebi, vessel.eli, vessel.em, vessel.em, vessel.pwfo, vessel.pwm, vessel.pifo, vessel.pim, vesselIntake);
+      const fullVoyage = (vessel.fbs > 0 && vessel.fls > 0) ? calcVoyage(route, vessel.fbs, vessel.fls, vessel.fbi, vessel.fli, vessel.fm, vessel.fm, vessel.pwfo, vessel.pwm, vessel.pifo, vessel.pim, vesselIntake) : null;
+
+      const d65 = calcD65(route, freightRates[routeKey], refVoyage, vlsfo, mgo, refIntake);
+
+      let ecoTCE_noScrub = 0, ecoTCE_scrub = 0, fullTCE_noScrub = 0, fullTCE_scrub = 0;
+
+      if (ecoVoyage) {
+        ecoTCE_noScrub = calcTCE(d65, ecoVoyage, vlsfo, mgo, route, vesselIntake);
+        ecoTCE_scrub = calcTCE(d65, ecoVoyage, hsfo, mgo, route, vesselIntake);
+      }
+
+      if (fullVoyage) {
+        fullTCE_noScrub = calcTCE(d65, fullVoyage, vlsfo, mgo, route, vesselIntake);
+        fullTCE_scrub = calcTCE(d65, fullVoyage, hsfo, mgo, route, vesselIntake);
+      }
+
+      routeData[routeKey] = { route, refVoyage, ecoVoyage, fullVoyage, d65, ecoTCE_noScrub, ecoTCE_scrub, fullTCE_noScrub, fullTCE_scrub };
+    });
+
+    const getSelectedTCE = (routeKey, ecoMode = true) => {
+      const rd = routeData[routeKey];
+      const hasScrubber = vessel.sc === "Yes" || vessel.sc === "YES";
+      const mode = scrubberMode === "auto" ? (hasScrubber ? "fifty" : "noScrub") : scrubberMode;
+
+      if (ecoMode) {
+        if (mode === "noScrub") return rd.ecoTCE_noScrub;
+        if (mode === "charterer") return rd.ecoTCE_scrub;
+        return (rd.ecoTCE_noScrub + rd.ecoTCE_scrub) / 2; // fifty
+      } else {
+        if (!rd.fullVoyage) return 0;
+        if (mode === "noScrub") return rd.fullTCE_noScrub;
+        if (mode === "charterer") return rd.fullTCE_scrub;
+        return (rd.fullTCE_noScrub + rd.fullTCE_scrub) / 2;
+      }
+    };
+
+    let ecoSum = 0, fullSum = 0, fullWtSum = 0, balticSum = 0;
+    ROUTE_KEYS.forEach(k => {
+      const wt = WEIGHTS[k];
+      const ecoTCE = getSelectedTCE(k, true);
+      const fullTCE = getSelectedTCE(k, false);
+      ecoSum += ecoTCE * wt / 100;
+      balticSum += freightRates[k] * wt / 100;
+      if (routeData[k].fullVoyage) {
+        fullSum += fullTCE * wt / 100;
+        fullWtSum += wt;
+      }
+    });
+
+    const eco11TC = ecoSum;
+    const baltic11TC = balticSum;
+    const full11TC = fullWtSum > 0 ? fullSum : 0;
+    const bsi11TC = bsiValues[0] || 15275;
+    const ecoPct = baltic11TC > 0 ? (eco11TC / baltic11TC) * 100 : 0;
+
+    const fuelPrices = [1000, 800, 600, 400, 200];
+    const freightLevels = [5000, 10000, 15000, 20000, 30000];
+    const sensitivityMatrix = fuelPrices.map(fuelPrice => {
+      return freightLevels.map(freightLevel => {
+        let weightedTCE = 0;
+        ROUTE_KEYS.forEach(routeKey => {
+          const route = ROUTES[routeKey];
+          const rd = routeData[routeKey];
+          if (!rd.refVoyage || !rd.ecoVoyage) return;
+          // Reference D65 at this fuel/freight combo
+          const sensD65 = (freightLevel * rd.refVoyage.days + totalFixed(route) + rd.refVoyage.ifo * fuelPrice + rd.refVoyage.mdo * mgo) / refIntake;
+          // Vessel TCE at this fuel/freight combo
+          const sensTCE = (sensD65 * vesselIntake - rd.ecoVoyage.ifo * fuelPrice - rd.ecoVoyage.mdo * mgo - totalFixed(route)) / rd.ecoVoyage.days;
+          weightedTCE += sensTCE * WEIGHTS[routeKey] / 100;
+        });
+        // Return as percentage of freight level
+        return freightLevel > 0 ? (weightedTCE / freightLevel) * 100 : 0;
+      });
+    });
+
+    return { vessel, refIntake, vesselIntake, routeData, eco11TC, full11TC, bsi11TC, baltic11TC, ecoPct, sensitivityMatrix, getSelectedTCE };
+  }, [vessels, selectedVessel, vlsfo, hsfo, mgo, scrubberMode, freightRates, bkiValues, bsiValues]);
+
+  if (!computed) {
+    return <div className="p-8 text-white text-center">Vessel not found</div>;
+  }
+
+  const hasScrubber = computed.vessel.sc === "Yes" || computed.vessel.sc === "YES";
+  const activeMode = scrubberMode === "auto" ? (hasScrubber ? "50/50" : "VLSFO") : scrubberMode === "noScrub" ? "VLSFO" : scrubberMode === "charterer" ? "HSFO" : "50/50";
+
+  return (
+    <div className="min-h-screen text-slate-100" style={{background:'linear-gradient(180deg, #0a0f1a 0%, #0d1424 50%, #0a0f1a 100%)', fontFamily:"'Inter','Segoe UI',system-ui,-apple-system,sans-serif"}}>
+      <style>{`
+        *, *::before, *::after { box-sizing: border-box; }
+        input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type=number] { -moz-appearance: textfield; }
+        .card { background: rgba(15,23,42,0.7); border: 1px solid rgba(71,85,105,0.3); border-radius: 12px; backdrop-filter: blur(8px); overflow: hidden; }
+        .card-header { padding: 14px 18px; border-bottom: 1px solid rgba(71,85,105,0.25); display: flex; align-items: center; gap: 10px; }
+        .card-header h2 { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; margin: 0; }
+        .card-body { padding: 0; }
+        .tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+        .tbl th { padding: 8px 12px; text-align: left; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: #64748b; border-bottom: 1px solid rgba(71,85,105,0.3); background: rgba(15,23,42,0.5); }
+        .tbl th.r { text-align: right; }
+        .tbl td { padding: 7px 12px; border-bottom: 1px solid rgba(30,41,59,0.5); }
+        .tbl td.r { text-align: right; font-variant-numeric: tabular-nums; }
+        .tbl tr:last-child td { border-bottom: none; }
+        .tbl tr:hover { background: rgba(30,58,138,0.08); }
+        .tbl .summary-row { background: rgba(30,58,138,0.12); border-top: 2px solid rgba(59,130,246,0.3); }
+        .tbl .summary-row td { font-weight: 700; padding: 10px 12px; }
+        .val-pos { color: #34d399; }
+        .val-neg { color: #fb7185; }
+        .val-muted { color: #64748b; }
+        .val-accent { color: #60a5fa; }
+        .val-white { color: #e2e8f0; }
+        .tag { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 6px; font-size: 10px; font-weight: 600; letter-spacing: 0.04em; }
+        .tag-green { background: rgba(52,211,153,0.15); color: #34d399; }
+        .tag-red { background: rgba(251,113,133,0.15); color: #fb7185; }
+        .tag-blue { background: rgba(96,165,250,0.12); color: #60a5fa; }
+        .inp { width: 100%; background: rgba(15,23,42,0.6); border: 1px solid rgba(71,85,105,0.3); border-radius: 6px; padding: 6px 10px; color: #e2e8f0; font-size: 12px; font-variant-numeric: tabular-nums; outline: none; transition: border-color 0.15s; }
+        .inp:focus { border-color: rgba(96,165,250,0.5); box-shadow: 0 0 0 2px rgba(96,165,250,0.1); }
+        .inp-sm { padding: 4px 6px; font-size: 11px; text-align: right; width: 72px; }
+        .sel { background: rgba(15,23,42,0.6); border: 1px solid rgba(71,85,105,0.3); border-radius: 8px; padding: 8px 12px; color: #e2e8f0; font-size: 13px; outline: none; width: 100%; cursor: pointer; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2364748b' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px; }
+        .sel:focus { border-color: rgba(96,165,250,0.5); }
+        .hm-cell { padding: 10px 4px; text-align: center; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; border: 1px solid rgba(15,23,42,0.8); border-radius: 4px; min-width: 56px; }
+        .stat-box { display: flex; flex-direction: column; gap: 2px; }
+        .stat-label { font-size: 10px; color: #64748b; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 500; }
+        .stat-value { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; color: #e2e8f0; }
+      `}</style>
+
+      {/* HEADER BAR */}
+      <div style={{background:'rgba(15,23,42,0.85)', borderBottom:'1px solid rgba(71,85,105,0.2)', backdropFilter:'blur(12px)', position:'sticky', top:0, zIndex:50}}>
+        <div style={{maxWidth:1400, margin:'0 auto', padding:'12px 24px'}}>
+          <div style={{display:'flex', alignItems:'center', gap:24, flexWrap:'wrap'}}>
+            <div style={{display:'flex', alignItems:'center', gap:10, marginRight:8}}>
+              <div style={{width:32, height:32, borderRadius:8, background:'linear-gradient(135deg, #3b82f6, #1d4ed8)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, fontWeight:900, color:'#fff'}}>S</div>
+              <div>
+                <div style={{fontSize:14, fontWeight:700, color:'#e2e8f0', lineHeight:1.2}}>SMX Period Calculator</div>
+                <div style={{fontSize:10, color:'#64748b', letterSpacing:'0.04em'}}>63,500 DWT Bulk Carrier</div>
+              </div>
+            </div>
+            <div style={{display:'flex', gap:6, alignItems:'center', flex:'1 1 220px', maxWidth:340}}>
+              <select value={selectedVessel} onChange={(e) => { setSelectedVessel(e.target.value); persistSetting('selectedVessel', e.target.value); }} className="sel" style={{fontWeight:600, flex:1}}>
+                {vessels.map(v => (<option key={v.n} value={v.n}>{v.n}</option>))}
+              </select>
+              <button onClick={() => { setNewVessel({...EMPTY_VESSEL}); setShowAddVessel(true); }} style={{width:34,height:34,borderRadius:8,border:'1px solid rgba(52,211,153,0.4)',background:'rgba(52,211,153,0.1)',color:'#34d399',fontSize:18,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,transition:'all 0.15s'}} title="Add New Vessel">+</button>
+              <button onClick={() => setShowVesselSpecs(s => !s)} style={{width:34,height:34,borderRadius:8,border:'1px solid rgba(96,165,250,0.4)',background:showVesselSpecs?'rgba(96,165,250,0.25)':'rgba(96,165,250,0.1)',color:'#60a5fa',fontSize:14,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,transition:'all 0.15s'}} title="View Vessel Specs">&#9432;</button>
+              <button onClick={() => { const v = vessels.find(x => x.n === selectedVessel); if(v) { setEditingVessel({...v}); }}} style={{width:34,height:34,borderRadius:8,border:'1px solid rgba(251,191,36,0.4)',background:'rgba(251,191,36,0.1)',color:'#fbbf24',fontSize:14,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,transition:'all 0.15s'}} title="Edit Vessel">&#9998;</button>
+            </div>
+            <div style={{display:'flex', gap:8, alignItems:'center'}}>
+              <div style={{display:'flex', flexDirection:'column', gap:2}}>
+                <span style={{fontSize:9, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.06em'}}>VLSFO</span>
+                <input type="number" value={vlsfo} onChange={(e) => { const v=Number(e.target.value); setVlsfo(v); persistSetting('vlsfo',v); }} className="inp inp-sm" style={{width:64}} />
+              </div>
+              <div style={{display:'flex', flexDirection:'column', gap:2}}>
+                <span style={{fontSize:9, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.06em'}}>HSFO</span>
+                <input type="number" value={hsfo} onChange={(e) => { const v=Number(e.target.value); setHsfo(v); persistSetting('hsfo',v); }} className="inp inp-sm" style={{width:64}} />
+              </div>
+              <div style={{display:'flex', flexDirection:'column', gap:2}}>
+                <span style={{fontSize:9, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.06em'}}>MGO</span>
+                <input type="number" value={mgo} onChange={(e) => { const v=Number(e.target.value); setMgo(v); persistSetting('mgo',v); }} className="inp inp-sm" style={{width:64}} />
+              </div>
+            </div>
+            <div style={{display:'flex', flexDirection:'column', gap:2}}>
+              <span style={{fontSize:9, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.06em'}}>Scrubber</span>
+              <select value={scrubberMode} onChange={(e) => { setScrubberMode(e.target.value); persistSetting('scrubberMode', e.target.value); }} className="sel" style={{width:140, padding:'6px 10px', fontSize:11}}>
+                <option value="auto">Auto</option>
+                <option value="noScrub">No Scrubber</option>
+                <option value="charterer">Charterer</option>
+                <option value="fifty">50/50</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{maxWidth:1400, margin:'0 auto', padding:'20px 24px'}}>
+
+        {/* VESSEL INFO STRIP */}
+        <div style={{display:'flex', gap:24, flexWrap:'wrap', padding:'16px 20px', background:'rgba(15,23,42,0.5)', border:'1px solid rgba(71,85,105,0.2)', borderRadius:10, marginBottom:20, alignItems:'center'}}>
+          <div className="stat-box"><span className="stat-label">Vessel</span><span className="stat-value" style={{color:'#60a5fa', fontSize:14}}>{computed.vessel.n}</span></div>
+          <div style={{width:1, height:32, background:'rgba(71,85,105,0.3)'}}></div>
+          <div className="stat-box"><span className="stat-label">DWT</span><span className="stat-value">{numberFormatter.format(computed.vessel.dwt)}</span></div>
+          <div className="stat-box"><span className="stat-label">Draft</span><span className="stat-value">{computed.vessel.dr.toFixed(2)}m</span></div>
+          <div className="stat-box"><span className="stat-label">Cubic</span><span className="stat-value">{numberFormatter.format(computed.vessel.cu)}</span></div>
+          <div className="stat-box"><span className="stat-label">Intake</span><span className="stat-value" style={{color:'#60a5fa'}}>{numberFormatter.format(computed.vesselIntake)}</span></div>
+          <div className="stat-box"><span className="stat-label">Eco B/L</span><span className="stat-value">{computed.vessel.ebs}/{computed.vessel.els} kts</span></div>
+          <div className="stat-box"><span className="stat-label">Scrubber</span><span className={`tag ${hasScrubber ? 'tag-green' : 'tag-red'}`}>{computed.vessel.sc}</span></div>
+          <div className="stat-box"><span className="stat-label">Mode</span><span className="tag tag-blue">{activeMode}</span></div>
+          <div style={{width:1, height:32, background:'rgba(71,85,105,0.3)'}}></div>
+          <div className="stat-box"><span className="stat-label">Eco 11TC</span><span className="stat-value" style={{color:'#34d399', fontSize:16}}>{numberFormatter.format(computed.eco11TC)}</span></div>
+          <div className="stat-box"><span className="stat-label">% to BSI</span><span className="stat-value" style={{color:'#fbbf24'}}>{computed.ecoPct.toFixed(1)}%</span></div>
+        </div>
+
+        {/* DETAILED VESSEL SPECS PANEL */}
+        {showVesselSpecs && computed && (() => {
+          const v = computed.vessel;
+          const specRow = (label, value, unit) => (
+            <div style={{display:'flex',justifyContent:'space-between',padding:'5px 0',borderBottom:'1px solid rgba(71,85,105,0.15)'}}>
+              <span style={{fontSize:11,color:'#94a3b8'}}>{label}</span>
+              <span style={{fontSize:11,fontWeight:600,color:'#e2e8f0'}}>{value}{unit ? <span style={{color:'#64748b',fontWeight:400}}> {unit}</span> : null}</span>
+            </div>
+          );
+          const sectionTitle = (title) => (
+            <div style={{fontSize:10,fontWeight:700,color:'#60a5fa',textTransform:'uppercase',letterSpacing:'0.06em',padding:'10px 0 4px',borderBottom:'1px solid rgba(96,165,250,0.2)',marginBottom:2}}>{title}</div>
+          );
+          const hasFullSpeed = v.fbs > 0 || v.fls > 0;
+          return (
+            <div style={{background:'rgba(15,23,42,0.6)',border:'1px solid rgba(71,85,105,0.25)',borderRadius:10,marginBottom:20,padding:'16px 20px',animation:'fadeIn 0.2s ease'}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+                <h3 style={{margin:0,fontSize:14,fontWeight:700,color:'#e2e8f0'}}>Vessel Specifications — {v.n}</h3>
+                <button onClick={() => { const vx = vessels.find(x => x.n === selectedVessel); if(vx) setEditingVessel({...vx}); }} style={{padding:'5px 14px',borderRadius:6,border:'1px solid rgba(251,191,36,0.4)',background:'rgba(251,191,36,0.1)',color:'#fbbf24',fontSize:11,fontWeight:600,cursor:'pointer'}}>Edit</button>
+              </div>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(200px, 1fr))',gap:'0 24px'}}>
+                <div>
+                  {sectionTitle('General')}
+                  {specRow('Name', v.n)}
+                  {specRow('DWT', numberFormatter.format(v.dwt), 'mt')}
+                  {specRow('Year Built', v.yr || '—')}
+                  {specRow('Draft', v.dr ? v.dr.toFixed(3) : '—', 'm')}
+                  {specRow('Cubic Capacity', numberFormatter.format(v.cu), 'cbft')}
+                  {specRow('TPC', v.tpc)}
+                  {specRow('Scrubber', v.sc)}
+                  {specRow('Stowage Factor', v.cu && v.dwt ? (v.cu / v.dwt).toFixed(2) : '—', 'cbft/mt')}
+                </div>
+                <div>
+                  {sectionTitle('Eco Speed')}
+                  {specRow('Ballast Speed', v.ebs, 'kts')}
+                  {specRow('Laden Speed', v.els, 'kts')}
+                  {specRow('Ballast IFO', v.ebi, 'mt/day')}
+                  {specRow('Laden IFO', v.eli, 'mt/day')}
+                  {specRow('MDO', v.em, 'mt/day')}
+                  {hasFullSpeed && sectionTitle('Full Speed')}
+                  {hasFullSpeed && specRow('Ballast Speed', v.fbs, 'kts')}
+                  {hasFullSpeed && specRow('Laden Speed', v.fls, 'kts')}
+                  {hasFullSpeed && specRow('Ballast IFO', v.fbi, 'mt/day')}
+                  {hasFullSpeed && specRow('Laden IFO', v.fli, 'mt/day')}
+                  {hasFullSpeed && specRow('MDO', v.fm, 'mt/day')}
+                </div>
+                <div>
+                  {sectionTitle('Port Consumption')}
+                  {specRow('Idle IFO', v.pifo, 'mt/day')}
+                  {specRow('Working IFO', v.pwfo, 'mt/day')}
+                  {specRow('Idle MDO', v.pim, 'mt/day')}
+                  {specRow('Working MDO', v.pwm, 'mt/day')}
+                  {sectionTitle('Calculated')}
+                  {specRow('Intake (this route)', numberFormatter.format(computed.vesselIntake), 'mt')}
+                  {specRow('DWT Diff vs Ref', (v.dwt - 63500).toFixed(1), 'mt')}
+                  {specRow('Draft Diff vs Ref', (v.dr - 13.418).toFixed(3), 'm')}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* MAIN 2-COLUMN LAYOUT */}
+        <div style={{display:'grid', gridTemplateColumns:'1fr 380px', gap:20, alignItems:'start'}}>
+
+          {/* LEFT COLUMN */}
+          <div style={{display:'flex', flexDirection:'column', gap:20}}>
+
+            {/* BALTIC ROUTES TABLE */}
+            <div className="card">
+              <div className="card-header">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 3h12M2 8h12M2 13h12" stroke="#3b82f6" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                <h2>Baltic Routes</h2>
+              </div>
+              <div className="card-body">
+                <table className="tbl">
+                  <thead>
+                    <tr>
+                      <th style={{width:90}}>Route</th>
+                      <th className="r" style={{width:90}}>Baltic Rate</th>
+                      <th className="r" style={{width:90}}>Eco TCE</th>
+                      <th className="r" style={{width:60}}>%</th>
+                      <th className="r" style={{width:90}}>Full TCE</th>
+                      <th className="r" style={{width:60}}>%</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ROUTE_KEYS.map(routeKey => {
+                      const ecoTCE = computed.getSelectedTCE(routeKey, true);
+                      const fullTCE = computed.getSelectedTCE(routeKey, false);
+                      const balticRate = freightRates[routeKey];
+                      const ecoPct = balticRate > 0 ? (ecoTCE / balticRate) * 100 : 0;
+                      const fullPct = (fullTCE > 0 && balticRate > 0) ? (fullTCE / balticRate) * 100 : 0;
+                      return (
+                        <tr key={routeKey}>
+                          <td style={{fontWeight:600, color:'#94a3b8'}}>{routeKey.replace('_63','')}</td>
+                          <td className="r"><input type="number" value={freightRates[routeKey]} onChange={(e) => { const nfr = {...freightRates, [routeKey]: Number(e.target.value)}; setFreightRates(nfr); persistSetting('freightRates',nfr); }} className="inp inp-sm" /></td>
+                          <td className={`r ${ecoTCE >= 0 ? 'val-pos' : 'val-neg'}`} style={{fontWeight:600}}>{numberFormatter.format(ecoTCE)}</td>
+                          <td className="r val-muted">{ecoPct.toFixed(1)}%</td>
+                          <td className={`r ${fullTCE > 0 ? 'val-white' : 'val-muted'}`}>{fullTCE > 0 ? numberFormatter.format(fullTCE) : '-'}</td>
+                          <td className="r val-muted">{fullTCE > 0 ? fullPct.toFixed(1)+'%' : '-'}</td>
+                        </tr>
+                      );
+                    })}
+                    <tr className="summary-row">
+                      <td style={{color:'#60a5fa'}}>11TC</td>
+                      <td className="r val-accent">{numberFormatter.format(computed.baltic11TC)}</td>
+                      <td className="r val-pos">{numberFormatter.format(computed.eco11TC)}</td>
+                      <td className="r" style={{color:'#fbbf24'}}>{computed.ecoPct.toFixed(1)}%</td>
+                      <td className="r val-white">{computed.full11TC > 0 ? numberFormatter.format(computed.full11TC) : '-'}</td>
+                      <td className="r val-muted">{computed.full11TC > 0 ? ((computed.full11TC / computed.baltic11TC) * 100).toFixed(1)+'%' : '-'}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* SENSITIVITY HEATMAP */}
+            <div className="card">
+              <div className="card-header">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1" y="1" width="6" height="6" rx="1" fill="#3b82f6" opacity="0.3"/><rect x="9" y="1" width="6" height="6" rx="1" fill="#3b82f6" opacity="0.6"/><rect x="1" y="9" width="6" height="6" rx="1" fill="#3b82f6" opacity="0.8"/><rect x="9" y="9" width="6" height="6" rx="1" fill="#3b82f6"/></svg>
+                <h2>Sensitivity Heatmap</h2>
+                <span style={{fontSize:10, color:'#64748b', marginLeft:'auto'}}>Eco TCE / Freight Rate %</span>
+              </div>
+              <div style={{padding:16, overflowX:'auto'}}>
+                <table style={{borderCollapse:'separate', borderSpacing:3}}>
+                  <thead>
+                    <tr>
+                      <th style={{padding:'6px 12px', fontSize:10, color:'#475569', textAlign:'left'}}>Fuel \ Freight</th>
+                      {[5000, 10000, 15000, 20000, 30000].map(f => (
+                        <th key={f} style={{padding:'6px 8px', fontSize:10, color:'#64748b', textAlign:'center', fontWeight:600}}>${numberFormatter.format(f)}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[1000, 800, 600, 400, 200].map((fuel, fi) => (
+                      <tr key={fuel}>
+                        <th style={{padding:'6px 12px', fontSize:11, color:'#94a3b8', textAlign:'left', fontWeight:600}}>${numberFormatter.format(fuel)}</th>
+                        {computed.sensitivityMatrix[fi].map((pct, fj) => {
+                          const t = Math.max(0, Math.min(1, pct / 100));
+                          const r = Math.round(220 - t * 180);
+                          const g = Math.round(50 + t * 170);
+                          const b = Math.round(60 + t * 40);
+                          return (
+                            <td key={fj} className="hm-cell" style={{background:`rgba(${r},${g},${b},0.25)`, color:`rgb(${r},${g},${b})`}}>
+                              {Math.round(pct)}%
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* ECO PERIODS */}
+            <div className="card">
+              <div className="card-header">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2v12M2 8h12" stroke="#34d399" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                <h2>Eco Speed Period Rates</h2>
+                <span style={{fontSize:10, color:'#64748b', marginLeft:'auto'}}>= MROUND(BKI x {computed.ecoPct.toFixed(1)}%, 50)</span>
+              </div>
+              <div className="card-body">
+                <table className="tbl">
+                  <thead>
+                    <tr>
+                      <th>Tenor</th>
+                      {DEFAULT_BKI_CURVE.months.map(m => (<th key={m} className="r">{m}</th>))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {DEFAULT_BKI_CURVE.tenors.map((tenor, ti) => (
+                      <tr key={tenor}>
+                        <td style={{color:'#94a3b8', fontWeight:500}}>{tenor}</td>
+                        {bkiValues[ti].map((val, mi) => {
+                          const ecoPeriod = mround(val * (computed.ecoPct / 100), 50);
+                          return <td key={mi} className="r val-pos" style={{fontWeight:600}}>{numberFormatter.format(ecoPeriod)}</td>;
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          {/* RIGHT COLUMN */}
+          <div style={{display:'flex', flexDirection:'column', gap:20}}>
+
+            {/* BSI FORWARD CURVE */}
+            <div className="card">
+              <div className="card-header">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 12l4-5 3 3 5-7" stroke="#60a5fa" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                <h2>BSI Forward Curve</h2>
+              </div>
+              <div className="card-body">
+                <table className="tbl">
+                  <thead>
+                    <tr>
+                      <th>Period</th>
+                      <th className="r">BSI 58</th>
+                      <th className="r">BSI 63</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {DEFAULT_BSI_CURVE.rows.map((label, idx) => {
+                      if (!label) return <tr key={idx}><td colSpan={3} style={{padding:2, borderBottom:'1px solid rgba(71,85,105,0.15)'}}></td></tr>;
+                      const isSpot = label === "Spot";
+                      return (
+                        <tr key={idx}>
+                          <td style={{fontWeight: isSpot ? 700 : 500, color: isSpot ? '#e2e8f0' : '#94a3b8'}}>{label}</td>
+                          <td className="r val-muted">{bsiValues[idx] ? numberFormatter.format(bsiValues[idx] - BSI_OFFSET) : ''}</td>
+                          <td className="r" style={{padding:'3px 4px'}}>
+                            <input type="number" value={bsiValues[idx] || ''} onChange={(e) => { const nv = [...bsiValues]; nv[idx] = e.target.value ? Number(e.target.value) : null; setBsiValues(nv); persistSetting('bsiValues',nv); }} className="inp inp-sm" style={{fontWeight: isSpot ? 700 : 400, color: isSpot ? '#60a5fa' : '#e2e8f0'}} />
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* BKI CURVE */}
+            <div className="card">
+              <div className="card-header">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 4l4 3-1 5 4-2 5 3" stroke="#f59e0b" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                <h2>BKI Curve</h2>
+              </div>
+              <div className="card-body">
+                <table className="tbl">
+                  <thead>
+                    <tr>
+                      <th>Tenor</th>
+                      {DEFAULT_BKI_CURVE.months.map(m => (<th key={m} className="r">{m}</th>))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {DEFAULT_BKI_CURVE.tenors.map((tenor, ti) => (
+                      <tr key={tenor}>
+                        <td style={{color:'#94a3b8', fontWeight:500, fontSize:11}}>{tenor}</td>
+                        {bkiValues[ti].map((val, mi) => (
+                          <td key={mi} className="r" style={{padding:'3px 4px'}}>
+                            <input type="number" value={val} onChange={(e) => { const nb = bkiValues.map(r => [...r]); nb[ti][mi] = Number(e.target.value); setBkiValues(nb); persistSetting('bkiValues',nb); }} className="inp inp-sm" style={{width:64}} />
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ADD VESSEL MODAL */}
+      {showAddVessel && (
+        <div style={{position:'fixed',inset:0,zIndex:100,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(0,0,0,0.6)',backdropFilter:'blur(4px)'}}>
+          <div style={{background:'#0f172a',border:'1px solid rgba(71,85,105,0.4)',borderRadius:16,width:'90%',maxWidth:720,maxHeight:'85vh',overflow:'auto',padding:0}}>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'16px 24px',borderBottom:'1px solid rgba(71,85,105,0.3)'}}>
+              <h2 style={{margin:0,fontSize:16,fontWeight:700,color:'#e2e8f0'}}>Add New Vessel</h2>
+              <button onClick={() => setShowAddVessel(false)} style={{background:'none',border:'none',color:'#64748b',fontSize:22,cursor:'pointer',padding:'4px 8px'}}>✕</button>
+            </div>
+            <div style={{padding:'20px 24px'}}>
+              {(() => {
+                const nv = newVessel;
+                const set = (key, val) => setNewVessel(prev => ({...prev, [key]: val}));
+                const numField = (label, key, w) => (
+                  <div style={{display:'flex',flexDirection:'column',gap:2}}>
+                    <span style={{fontSize:9,color:'#64748b',textTransform:'uppercase',letterSpacing:'0.06em'}}>{label}</span>
+                    <input type="number" value={nv[key]} onChange={e => set(key, Number(e.target.value))} className="inp inp-sm" style={{width:w||80}} />
+                  </div>
+                );
+                return (
+                  <div style={{display:'flex',flexDirection:'column',gap:16}}>
+                    {/* Vessel Name */}
+                    <div style={{display:'flex',gap:12,alignItems:'end'}}>
+                      <div style={{flex:1}}>
+                        <span style={{fontSize:9,color:'#64748b',textTransform:'uppercase',letterSpacing:'0.06em'}}>Vessel Name</span>
+                        <input type="text" value={nv.n} onChange={e => set('n', e.target.value.toUpperCase())} className="inp" placeholder="e.g. MY VESSEL" style={{marginTop:2}} />
+                      </div>
+                      <div>
+                        <span style={{fontSize:9,color:'#64748b',textTransform:'uppercase',letterSpacing:'0.06em'}}>Scrubber</span>
+                        <select value={nv.sc} onChange={e => set('sc', e.target.value)} className="sel" style={{width:80,padding:'6px 10px',fontSize:11,marginTop:2}}>
+                          <option value="Yes">Yes</option>
+                          <option value="No">No</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Basic Specs */}
+                    <div>
+                      <div style={{fontSize:11,fontWeight:600,color:'#94a3b8',marginBottom:8,textTransform:'uppercase',letterSpacing:'0.05em'}}>Vessel Specs</div>
+                      <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
+                        {numField('DWT','dwt',90)}
+                        {numField('Year','yr',65)}
+                        {numField('Draft (m)','dr',80)}
+                        {numField('Cubic Cap','cu',90)}
+                        {numField('TPC','tpc',65)}
+                      </div>
+                    </div>
+
+                    {/* Full Speed */}
+                    <div>
+                      <div style={{fontSize:11,fontWeight:600,color:'#94a3b8',marginBottom:8,textTransform:'uppercase',letterSpacing:'0.05em'}}>Full Speed (0 = no full speed data)</div>
+                      <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
+                        {numField('Ballast Spd','fbs',80)}
+                        {numField('Laden Spd','fls',80)}
+                        {numField('Ballast IFO','fbi',80)}
+                        {numField('Laden IFO','fli',80)}
+                        {numField('MDO','fm',60)}
+                      </div>
+                    </div>
+
+                    {/* Eco Speed */}
+                    <div>
+                      <div style={{fontSize:11,fontWeight:600,color:'#94a3b8',marginBottom:8,textTransform:'uppercase',letterSpacing:'0.05em'}}>Eco Speed</div>
+                      <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
+                        {numField('Ballast Spd','ebs',80)}
+                        {numField('Laden Spd','els',80)}
+                        {numField('Ballast IFO','ebi',80)}
+                        {numField('Laden IFO','eli',80)}
+                        {numField('MDO','em',60)}
+                      </div>
+                    </div>
+
+                    {/* Port Consumption */}
+                    <div>
+                      <div style={{fontSize:11,fontWeight:600,color:'#94a3b8',marginBottom:8,textTransform:'uppercase',letterSpacing:'0.05em'}}>Port Consumption</div>
+                      <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
+                        {numField('Idle IFO','pifo',80)}
+                        {numField('Working IFO','pwfo',80)}
+                        {numField('Idle MDO','pim',70)}
+                        {numField('Working MDO','pwm',70)}
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div style={{display:'flex',gap:12,justifyContent:'flex-end',paddingTop:8,borderTop:'1px solid rgba(71,85,105,0.2)'}}>
+                      <button onClick={() => setShowAddVessel(false)} style={{padding:'8px 20px',borderRadius:8,border:'1px solid rgba(71,85,105,0.3)',background:'transparent',color:'#94a3b8',fontSize:12,fontWeight:600,cursor:'pointer'}}>Cancel</button>
+                      <button onClick={() => {
+                        if (!nv.n.trim()) { alert('Please enter a vessel name'); return; }
+                        if (vessels.some(v => v.n === nv.n.trim())) { alert('Vessel name already exists'); return; }
+                        const addedVessel = {...nv, n: nv.n.trim()};
+                        setVessels(prev => [...prev, addedVessel]);
+                        setSelectedVessel(addedVessel.n);
+                        persistSetting('selectedVessel', addedVessel.n);
+                        setShowAddVessel(false);
+                      }} style={{padding:'8px 24px',borderRadius:8,border:'none',background:'linear-gradient(135deg,#3b82f6,#1d4ed8)',color:'#fff',fontSize:12,fontWeight:700,cursor:'pointer',letterSpacing:'0.03em'}}>Add Vessel</button>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT VESSEL MODAL */}
+      {editingVessel && (
+        <div style={{position:'fixed',inset:0,zIndex:100,display:'flex',alignItems:'center',justifyContent:'center',background:'rgba(0,0,0,0.6)',backdropFilter:'blur(4px)'}}>
+          <div style={{background:'#0f172a',border:'1px solid rgba(71,85,105,0.4)',borderRadius:16,width:'90%',maxWidth:720,maxHeight:'85vh',overflow:'auto',padding:0}}>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'16px 24px',borderBottom:'1px solid rgba(71,85,105,0.3)'}}>
+              <h2 style={{margin:0,fontSize:16,fontWeight:700,color:'#e2e8f0'}}>Edit Vessel — {editingVessel.n}</h2>
+              <button onClick={() => setEditingVessel(null)} style={{background:'none',border:'none',color:'#64748b',fontSize:22,cursor:'pointer',padding:'4px 8px'}}>✕</button>
+            </div>
+            <div style={{padding:'20px 24px'}}>
+              {(() => {
+                const ev = editingVessel;
+                const setEv = (key, val) => setEditingVessel(prev => ({...prev, [key]: val}));
+                const numField = (label, key, w) => (
+                  <div style={{display:'flex',flexDirection:'column',gap:2}}>
+                    <span style={{fontSize:9,color:'#64748b',textTransform:'uppercase',letterSpacing:'0.06em'}}>{label}</span>
+                    <input type="number" value={ev[key]} onChange={e => setEv(key, Number(e.target.value))} className="inp inp-sm" style={{width:w||80}} />
+                  </div>
+                );
+                return (
+                  <div style={{display:'flex',flexDirection:'column',gap:16}}>
+                    {/* Vessel Name */}
+                    <div style={{display:'flex',gap:12,alignItems:'end'}}>
+                      <div style={{flex:1}}>
+                        <span style={{fontSize:9,color:'#64748b',textTransform:'uppercase',letterSpacing:'0.06em'}}>Vessel Name</span>
+                        <input type="text" value={ev.n} onChange={e => setEv('n', e.target.value.toUpperCase())} className="inp" style={{marginTop:2}} />
+                      </div>
+                      <div>
+                        <span style={{fontSize:9,color:'#64748b',textTransform:'uppercase',letterSpacing:'0.06em'}}>Scrubber</span>
+                        <select value={ev.sc} onChange={e => setEv('sc', e.target.value)} className="sel" style={{width:80,padding:'6px 10px',fontSize:11,marginTop:2}}>
+                          <option value="Yes">Yes</option>
+                          <option value="No">No</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Basic Specs */}
+                    <div>
+                      <div style={{fontSize:11,fontWeight:600,color:'#94a3b8',marginBottom:8,textTransform:'uppercase',letterSpacing:'0.05em'}}>Vessel Specs</div>
+                      <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
+                        {numField('DWT','dwt',90)}
+                        {numField('Year','yr',65)}
+                        {numField('Draft (m)','dr',80)}
+                        {numField('Cubic Cap','cu',90)}
+                        {numField('TPC','tpc',65)}
+                      </div>
+                    </div>
+
+                    {/* Full Speed */}
+                    <div>
+                      <div style={{fontSize:11,fontWeight:600,color:'#94a3b8',marginBottom:8,textTransform:'uppercase',letterSpacing:'0.05em'}}>Full Speed (0 = no full speed data)</div>
+                      <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
+                        {numField('Ballast Spd','fbs',80)}
+                        {numField('Laden Spd','fls',80)}
+                        {numField('Ballast IFO','fbi',80)}
+                        {numField('Laden IFO','fli',80)}
+                        {numField('MDO','fm',60)}
+                      </div>
+                    </div>
+
+                    {/* Eco Speed */}
+                    <div>
+                      <div style={{fontSize:11,fontWeight:600,color:'#94a3b8',marginBottom:8,textTransform:'uppercase',letterSpacing:'0.05em'}}>Eco Speed</div>
+                      <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
+                        {numField('Ballast Spd','ebs',80)}
+                        {numField('Laden Spd','els',80)}
+                        {numField('Ballast IFO','ebi',80)}
+                        {numField('Laden IFO','eli',80)}
+                        {numField('MDO','em',60)}
+                      </div>
+                    </div>
+
+                    {/* Port Consumption */}
+                    <div>
+                      <div style={{fontSize:11,fontWeight:600,color:'#94a3b8',marginBottom:8,textTransform:'uppercase',letterSpacing:'0.05em'}}>Port Consumption</div>
+                      <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
+                        {numField('Idle IFO','pifo',80)}
+                        {numField('Working IFO','pwfo',80)}
+                        {numField('Idle MDO','pim',70)}
+                        {numField('Working MDO','pwm',70)}
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div style={{display:'flex',gap:12,justifyContent:'flex-end',paddingTop:8,borderTop:'1px solid rgba(71,85,105,0.2)'}}>
+                      <button onClick={() => setEditingVessel(null)} style={{padding:'8px 20px',borderRadius:8,border:'1px solid rgba(71,85,105,0.3)',background:'transparent',color:'#94a3b8',fontSize:12,fontWeight:600,cursor:'pointer'}}>Cancel</button>
+                      <button onClick={() => {
+                        if (!ev.n.trim()) { alert('Please enter a vessel name'); return; }
+                        const originalName = vessels.find(x => x.n === selectedVessel)?.n;
+                        const trimName = ev.n.trim();
+                        if (trimName !== originalName && vessels.some(v => v.n === trimName)) { alert('A vessel with this name already exists'); return; }
+                        const updated = {...ev, n: trimName};
+                        setVessels(prev => prev.map(v => v.n === originalName ? updated : v));
+                        setSelectedVessel(trimName);
+                        persistSetting('selectedVessel', trimName);
+                        setEditingVessel(null);
+                      }} style={{padding:'8px 24px',borderRadius:8,border:'none',background:'linear-gradient(135deg,#f59e0b,#d97706)',color:'#fff',fontSize:12,fontWeight:700,cursor:'pointer',letterSpacing:'0.03em'}}>Save Changes</button>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(React.createElement(SMXCalculator));
+</script>
+</body>
+</html>

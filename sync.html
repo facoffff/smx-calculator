@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BSI 63 Sync - FFA Curves → GitHub</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0d1117; color: #c9d1d9; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+  .card { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 32px; max-width: 520px; width: 90%; }
+  h1 { font-size: 20px; color: #58a6ff; margin-bottom: 8px; }
+  .subtitle { font-size: 13px; color: #8b949e; margin-bottom: 24px; }
+  .status { padding: 12px 16px; border-radius: 8px; margin: 12px 0; font-size: 14px; }
+  .status.info { background: #0d1117; border: 1px solid #30363d; }
+  .status.success { background: #0d2818; border: 1px solid #238636; color: #3fb950; }
+  .status.error { background: #280d0d; border: 1px solid #da3633; color: #f85149; }
+  .status.working { background: #0d1a28; border: 1px solid #1f6feb; color: #58a6ff; }
+  .btn { display: inline-block; padding: 10px 20px; border-radius: 6px; border: none; font-size: 14px; font-weight: 600; cursor: pointer; margin: 8px 4px 8px 0; }
+  .btn-primary { background: #238636; color: #fff; }
+  .btn-primary:hover { background: #2ea043; }
+  .btn-primary:disabled { background: #21262d; color: #484f58; cursor: not-allowed; }
+  .btn-secondary { background: #21262d; color: #c9d1d9; border: 1px solid #30363d; }
+  .btn-secondary:hover { background: #30363d; }
+  .input-group { margin: 16px 0; }
+  .input-group label { display: block; font-size: 13px; color: #8b949e; margin-bottom: 6px; }
+  .input-group input { width: 100%; padding: 8px 12px; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; color: #c9d1d9; font-size: 14px; font-family: monospace; }
+  .input-group input:focus { outline: none; border-color: #58a6ff; }
+  .data-preview { font-family: monospace; font-size: 12px; background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 12px; max-height: 200px; overflow-y: auto; margin: 12px 0; white-space: pre; }
+  .auto-sync { margin: 16px 0; padding: 12px 16px; background: #0d1117; border: 1px solid #30363d; border-radius: 8px; }
+  .auto-sync label { font-size: 13px; color: #8b949e; display: flex; align-items: center; gap: 8px; cursor: pointer; }
+  .auto-sync input[type="checkbox"] { accent-color: #238636; }
+  .timer { font-size: 12px; color: #8b949e; margin-top: 4px; }
+  .step { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 13px; }
+  .step .icon { width: 20px; text-align: center; }
+  .step.done .icon { color: #3fb950; }
+  .step.active .icon { color: #58a6ff; }
+  .step.pending .icon { color: #484f58; }
+  .note { font-size: 12px; color: #8b949e; margin-top: 16px; padding-top: 12px; border-top: 1px solid #21262d; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>BSI 63 Auto-Sync</h1>
+  <p class="subtitle">Fetches FFA Curves from SharePoint → Pushes BSI 63 data to GitHub</p>
+
+  <div class="input-group">
+    <label>GitHub Personal Access Token (fine-grained, repo contents write)</label>
+    <input type="password" id="ghToken" placeholder="github_pat_..." />
+  </div>
+
+  <div class="auto-sync">
+    <label><input type="checkbox" id="autoSync" /> Auto-sync every 5 minutes</label>
+    <div class="timer" id="timerDisplay"></div>
+  </div>
+
+  <div>
+    <button class="btn btn-primary" id="syncBtn" onclick="doSync()">Sync Now</button>
+    <button class="btn btn-secondary" id="saveTokenBtn" onclick="saveToken()">Save Token</button>
+  </div>
+
+  <div id="steps" style="margin: 16px 0;"></div>
+  <div id="statusBox"></div>
+  <div id="dataPreview" class="data-preview" style="display:none;"></div>
+
+  <p class="note">
+    This page must be opened while logged into SharePoint (same browser session).
+    The GitHub token is stored locally in your browser and never sent anywhere except GitHub's API.
+    <br><br>
+    <strong>Setup:</strong> Create a fine-grained PAT at
+    <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" style="color:#58a6ff;">github.com/settings/tokens</a>
+    with "Contents: Read and Write" permission for the smx-calculator repo.
+  </p>
+</div>
+
+<script>
+const SP_SITE = 'https://lightshipcloud-my.sharepoint.com/personal/bsco_lightshipderivatives_com';
+const SP_FILE_PATH = '/personal/bsco_lightshipderivatives_com/Documents/FFA%20Curves%20.xlsx';
+const GH_OWNER = 'facoffff';
+const GH_REPO = 'smx-calculator';
+const GH_FILE = 'bsi-data.json';
+const GH_BRANCH = 'main';
+
+let autoSyncInterval = null;
+let nextSyncTime = null;
+
+// Load saved token
+const savedToken = localStorage.getItem('bsi_sync_gh_token');
+if (savedToken) document.getElementById('ghToken').value = savedToken;
+
+const savedAuto = localStorage.getItem('bsi_sync_auto');
+if (savedAuto === 'true') {
+  document.getElementById('autoSync').checked = true;
+  startAutoSync();
+}
+
+document.getElementById('autoSync').addEventListener('change', function() {
+  if (this.checked) { startAutoSync(); } else { stopAutoSync(); }
+  localStorage.setItem('bsi_sync_auto', this.checked);
+});
+
+function saveToken() {
+  const token = document.getElementById('ghToken').value.trim();
+  if (token) {
+    localStorage.setItem('bsi_sync_gh_token', token);
+    showStatus('Token saved locally.', 'success');
+  }
+}
+
+function startAutoSync() {
+  stopAutoSync();
+  doSync();
+  autoSyncInterval = setInterval(doSync, 5 * 60 * 1000);
+  nextSyncTime = Date.now() + 5 * 60 * 1000;
+  updateTimer();
+}
+
+function stopAutoSync() {
+  if (autoSyncInterval) { clearInterval(autoSyncInterval); autoSyncInterval = null; }
+  nextSyncTime = null;
+  document.getElementById('timerDisplay').textContent = '';
+}
+
+function updateTimer() {
+  if (!nextSyncTime) return;
+  const remaining = Math.max(0, Math.ceil((nextSyncTime - Date.now()) / 1000));
+  const m = Math.floor(remaining / 60);
+  const s = remaining % 60;
+  document.getElementById('timerDisplay').textContent = `Next sync in ${m}:${s.toString().padStart(2,'0')}`;
+  if (remaining > 0) requestAnimationFrame(() => setTimeout(updateTimer, 1000));
+}
+
+function showStatus(msg, type) {
+  document.getElementById('statusBox').innerHTML = `<div class="status ${type}">${msg}</div>`;
+}
+
+function showSteps(steps) {
+  document.getElententById('steps').innerHTML = steps.map(s =>
+    `<div class="step ${s.state}"><span class="icon">${s.state==='done'?'✓':s.state==='active'?'⟳':'○'}</span>${s.text}</div>`
+  ).join('');
+}
+
+async function doSync() {
+  const btn = document.getElementById('syncBtn');
+  btn.disabled = true;
+
+  if (autoSyncInterval) {
+    nextSyncTime = Date.now() + 5 * 60 * 1000;
+    updateTimer();
+  }
+
+  try {
+    showSteps([{ text: 'Fetching FFA Curves...', state: 'active' }]);
+    const apiUrl = SP_SITE + `/_api/web/GetFileByServerRelativeUrl('${SP_FILE_PATH}')/$value`;
+    const resp = await fetch(apiUrl, { credentials: 'include' });
+    if (!resp.ok) throw new Error('SharePoint fetch failed: ' + resp.status);
+    const buf = await resp.arrayBuffer();
+    showSteps([{ text: 'Parsed!', state: 'done' }]);
+  } catch(e) { showStatus(e.message, 'error'); }
+  finally { btn.disabled = false; }
+}
+</script>
+</body>
+</html>
